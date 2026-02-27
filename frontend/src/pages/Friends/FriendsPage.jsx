@@ -82,7 +82,8 @@ export default function FriendsPage() {
             </button>
             <button
               type="button"
-              className="flex items-center gap-2 px-4 py-2 text-gray-400 cursor-not-allowed"
+              onClick={() => navigate("/friends/all")}
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-50"
             >
               <Users className="w-4 h-4" />
               <span>Tất cả bạn bè</span>
