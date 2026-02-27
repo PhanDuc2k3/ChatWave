@@ -4,6 +4,7 @@ import Login from "./pages/login";
 import Register from "./pages/register";
 import Message from "./pages/Message";
 import Home from "./pages/Home";
+import Friends from "./pages/Friends";
 export default function App() {
   return (
   <div>
@@ -11,7 +12,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/message" element={<Message />} />
+          <Route path="/message/*" element={<Message />} />
+          <Route path="/friends/*" element={<Friends />} />
           <Route path="/" element={<Home />} />
         </Routes>
       </BrowserRouter>

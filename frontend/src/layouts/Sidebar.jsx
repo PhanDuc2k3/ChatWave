@@ -1,10 +1,16 @@
 import React from "react";
-import { Home as HomeIcon, MessageCircle, Newspaper, Bell } from "lucide-react";
+import {
+  Home as HomeIcon,
+  MessageCircle,
+  Users,
+  Newspaper,
+  Bell,
+} from "lucide-react";
 import PropTypes from "prop-types";
 
 export default function Sidebar({ activeNav, setActiveNav }) {
   return (
-    <aside className="hidden sm:flex flex-col justify-between items-center w-16 lg:w-20 bg-gradient-to-b from-[#F5C46A] to-[#FA8DAE] text-white py-4">
+    <aside className="hidden sm:flex flex-col justify-between items-center w-16 lg:w-20 bg-linear-to-b from-[#F5C46A] to-[#FA8DAE] text-white py-4">
       <div className="flex flex-col items-center gap-4">
         <nav className="flex flex-col items-center gap-4">
           {/* Home */}
@@ -31,6 +37,19 @@ export default function Sidebar({ activeNav, setActiveNav }) {
             }`}
           >
             <MessageCircle className="w-5 h-5" />
+          </button>
+
+          {/* Friends */}
+          <button
+            title="Bạn bè"
+            onClick={() => setActiveNav("friends")}
+            className={`w-12 h-11 rounded-xl flex items-center justify-center transition-colors ${
+              activeNav === "friends"
+                ? "bg-white text-[#FA8DAE] shadow-sm hover:bg-[#f6f6f6]"
+                : "border border-white/70 text-white hover:bg-white/20"
+            }`}
+          >
+            <Users className="w-5 h-5" />
           </button>
 
           {/* News */}
