@@ -1,9 +1,36 @@
-import React, { useState } from "react";
+import React from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 
 export default function MainLayout({ children, headerContent }) {
-  const [activeNav, setActiveNav] = useState("home");
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const activeNav = React.useMemo(() => {
+    if (location.pathname.startsWith("/message")) return "chat";
+    // có thể mở rộng thêm news/notifications sau
+    return "home";
+  }, [location.pathname]);
+
+  const handleSetActiveNav = (target) => {
+    switch (target) {
+      case "home":
+        navigate("/");
+        break;
+      case "chat":
+        navigate("/message");
+        break;
+      case "news":
+        navigate("/news");
+        break;
+      case "notifications":
+        navigate("/notifications");
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFF9F2]">
@@ -13,7 +40,7 @@ export default function MainLayout({ children, headerContent }) {
       {/* BELOW HEADER: SIDEBAR + MAIN */}
       <div className="flex flex-1">
         {/* LEFT SIDEBAR STARTING UNDER HEADER */}
-        <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} />
+        <Sidebar activeNav={activeNav} setActiveNav={handleSetActiveNav} />
 
         {/* MAIN AREA TO THE RIGHT OF SIDEBAR */}
         <div className="flex-1 flex flex-col">
