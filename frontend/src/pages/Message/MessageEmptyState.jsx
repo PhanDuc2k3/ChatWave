@@ -1,6 +1,10 @@
 import React from "react";
 
-export default function HomeEmptyState({ slides, activeSlide, setActiveSlide }) {
+export default function MessageEmptyState({
+  slides,
+  activeSlide,
+  setActiveSlide,
+}) {
   return (
     <div className="w-full flex flex-col items-center">
       <div className="relative overflow-hidden" style={{ width: "80%" }}>

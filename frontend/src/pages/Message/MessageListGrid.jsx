@@ -20,7 +20,7 @@ function sortItems(items, sortOption) {
   return cloned;
 }
 
-export default function HomeListGrid({
+export default function MessageListGrid({
   items,
   sortOption,
   showMembers,
