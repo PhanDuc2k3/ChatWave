@@ -7,7 +7,6 @@ export default function MainLayout({
   children,
   headerContent,
   showSearch = true,
-  showHeaderActions = true,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -16,6 +15,7 @@ export default function MainLayout({
     if (location.pathname.startsWith("/friends")) return "friends";
     if (location.pathname.startsWith("/message")) return "chat";
     if (location.pathname.startsWith("/tasks")) return "tasks";
+    if (location.pathname.startsWith("/meeting")) return "meeting";
     return "home";
   }, [location.pathname]);
 
@@ -33,6 +33,9 @@ export default function MainLayout({
       case "tasks":
         navigate("/tasks");
         break;
+      case "meeting":
+        navigate("/meeting");
+        break;
       case "notifications":
         navigate("/notifications");
         break;
@@ -42,19 +45,17 @@ export default function MainLayout({
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FFF9F2]">
-      {/* HEADER FULL WIDTH */}
+    <div className="min-h-screen bg-[#FFF9F2]">
+      {/* HEADER - cố định trên cùng */}
       <Header />
 
-      {/* BELOW HEADER: SIDEBAR + MAIN */}
-      <div className="flex flex-1">
-        {/* LEFT SIDEBAR STARTING UNDER HEADER */}
-        <Sidebar activeNav={activeNav} setActiveNav={handleSetActiveNav} />
+      {/* SIDEBAR - cố định bên trái, dưới header */}
+      <Sidebar activeNav={activeNav} setActiveNav={handleSetActiveNav} />
 
-        {/* MAIN AREA TO THE RIGHT OF SIDEBAR */}
-        <div className="flex-1 flex flex-col">
-          {/* SUB HEADER WITH SEARCH + PAGE FILTERS */}
-          <div className="bg-white border-b border-[#F5D9A6] px-4 md:px-8 py-3 flex flex-col gap-3">
+      {/* MAIN CONTENT - đẩy xuống dưới header, sang phải sidebar */}
+      <div className="pt-16 md:pt-20 sm:pl-16 lg:pl-20 h-screen overflow-hidden flex flex-col">
+        {/* SUB HEADER WITH SEARCH + PAGE FILTERS - cố định cùng header/sidebar */}
+        <div className="shrink-0 bg-white border-b border-[#F5D9A6] px-4 md:px-8 py-3 flex flex-col gap-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               {showSearch && (
                 <div className="flex items-center bg-white shadow-sm rounded-full px-4 py-2 w-full md:max-w-md">
@@ -74,27 +75,11 @@ export default function MainLayout({
                 </div>
               )}
 
-              {showHeaderActions && (
-                <div className="hidden md:flex items-center gap-3 text-xl text-[#F89A8C]">
-                  <button className="w-9 h-9 rounded-full bg-[#FFE6DD] flex items-center justify-center hover:bg-[#ffd3c4]">
-                    <i className="fas fa-folder-open" />
-                  </button>
-                  <button className="w-9 h-9 rounded-full bg-[#FFE6DD] flex items-center justify-center hover:bg-[#ffd3c4]">
-                    <i className="fas fa-comment-dots" />
-                  </button>
-                  <button className="w-9 h-9 rounded-full bg-[#FFE6DD] flex items-center justify-center hover:bg-[#ffd3c4]">
-                    <i className="fas fa-user-friends" />
-                  </button>
-                  <button className="w-9 h-9 rounded-full bg-[#FFE6DD] flex items-center justify-center hover:bg-[#ffd3c4]">
-                    <i className="fas fa-globe" />
-                  </button>
-                </div>
-              )}
             </div>
-          </div>
+        </div>
 
-          {/* MAIN CONTENT + FLOATING CHATBOT LOGO */}
-          <main className="flex-1 bg-white relative px-4 overflow-auto">
+        {/* MAIN CONTENT - chỉ phần này cuộn */}
+        <main className="flex-1 min-h-0 bg-white relative px-4 overflow-auto">
             {children}
 
             {/* Floating bot avatar bottom-right, overlapping content */}
@@ -105,8 +90,7 @@ export default function MainLayout({
                 </div>
               </div>
             </div>
-          </main>
-        </div>
+        </main>
       </div>
     </div>
   );

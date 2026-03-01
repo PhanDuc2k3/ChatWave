@@ -4,13 +4,14 @@ import {
   MessageCircle,
   Users,
   ClipboardList,
-  Bell,
+  Video,
+  Settings,
 } from "lucide-react";
 import PropTypes from "prop-types";
 
 export default function Sidebar({ activeNav, setActiveNav }) {
   return (
-    <aside className="hidden sm:flex flex-col justify-between items-center w-16 lg:w-20 bg-linear-to-b from-[#F5C46A] to-[#FA8DAE] text-white py-4">
+    <aside className="hidden sm:flex fixed left-0 top-16 md:top-20 bottom-0 z-30 flex-col justify-between items-center w-16 lg:w-20 bg-linear-to-b from-[#F5C46A] to-[#FA8DAE] text-white py-4">
       <div className="flex flex-col items-center gap-4">
         <nav className="flex flex-col items-center gap-4">
           {/* Home */}
@@ -65,27 +66,28 @@ export default function Sidebar({ activeNav, setActiveNav }) {
             <ClipboardList className="w-5 h-5" />
           </button>
 
-          {/* Notifications */}
+          {/* Phòng họp */}
           <button
-            title="Thông báo"
-            onClick={() => setActiveNav("notifications")}
+            title="Phòng họp"
+            onClick={() => setActiveNav("meeting")}
             className={`w-12 h-11 rounded-xl flex items-center justify-center transition-colors ${
-              activeNav === "notifications"
+              activeNav === "meeting"
                 ? "bg-white text-[#FA8DAE] shadow-sm hover:bg-[#f6f6f6]"
                 : "border border-white/70 text-white hover:bg-white/20"
             }`}
           >
-            <Bell className="w-5 h-5" />
+            <Video className="w-5 h-5" />
           </button>
         </nav>
       </div>
 
-      <div className="flex flex-col items-center gap-4 text-xl mt-4">
-        <button className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center hover:bg-white/30">
-          <i className="fas fa-th-large" />
-        </button>
-        <button className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center hover:bg-white/30">
-          <i className="fas fa-cog" />
+      <div className="flex flex-col items-center gap-4 mt-4 pt-4 border-t border-white/30">
+        <button
+          type="button"
+          title="Cài đặt"
+          className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center hover:bg-white/30 text-white transition-colors"
+        >
+          <Settings className="w-5 h-5" />
         </button>
       </div>
     </aside>

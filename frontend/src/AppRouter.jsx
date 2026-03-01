@@ -6,6 +6,7 @@ import Message from "./pages/Message";
 import Home from "./pages/Home";
 import Friends from "./pages/Friends";
 import Tasks from "./pages/Tasks";
+import Meeting from "./pages/Meeting";
 export default function App() {
   return (
   <div>
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/message/*" element={<Message />} />
           <Route path="/friends/*" element={<Friends />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/meeting" element={<Meeting />} />
           <Route path="/" element={<Home />} />
         </Routes>
       </BrowserRouter>
