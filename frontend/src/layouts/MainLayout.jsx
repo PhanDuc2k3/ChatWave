@@ -15,7 +15,7 @@ export default function MainLayout({
   const activeNav = React.useMemo(() => {
     if (location.pathname.startsWith("/friends")) return "friends";
     if (location.pathname.startsWith("/message")) return "chat";
-    // có thể mở rộng thêm news/notifications sau
+    if (location.pathname.startsWith("/tasks")) return "tasks";
     return "home";
   }, [location.pathname]);
 
@@ -30,8 +30,8 @@ export default function MainLayout({
       case "friends":
         navigate("/friends");
         break;
-      case "news":
-        navigate("/news");
+      case "tasks":
+        navigate("/tasks");
         break;
       case "notifications":
         navigate("/notifications");

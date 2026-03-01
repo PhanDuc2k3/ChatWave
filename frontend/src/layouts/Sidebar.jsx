@@ -3,7 +3,7 @@ import {
   Home as HomeIcon,
   MessageCircle,
   Users,
-  Newspaper,
+  ClipboardList,
   Bell,
 } from "lucide-react";
 import PropTypes from "prop-types";
@@ -52,17 +52,17 @@ export default function Sidebar({ activeNav, setActiveNav }) {
             <Users className="w-5 h-5" />
           </button>
 
-          {/* News */}
+          {/* Task - Giao việc */}
           <button
-            title="Tin tức"
-            onClick={() => setActiveNav("news")}
+            title="Giao việc"
+            onClick={() => setActiveNav("tasks")}
             className={`w-12 h-11 rounded-xl flex items-center justify-center transition-colors ${
-              activeNav === "news"
+              activeNav === "tasks"
                 ? "bg-white text-[#FA8DAE] shadow-sm hover:bg-[#f6f6f6]"
                 : "border border-white/70 text-white hover:bg-white/20"
             }`}
           >
-            <Newspaper className="w-5 h-5" />
+            <ClipboardList className="w-5 h-5" />
           </button>
 
           {/* Notifications */}

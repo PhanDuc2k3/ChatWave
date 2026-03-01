@@ -5,6 +5,7 @@ import Register from "./pages/register";
 import Message from "./pages/Message";
 import Home from "./pages/Home";
 import Friends from "./pages/Friends";
+import Tasks from "./pages/Tasks";
 export default function App() {
   return (
   <div>
@@ -14,6 +15,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/message/*" element={<Message />} />
           <Route path="/friends/*" element={<Friends />} />
+          <Route path="/tasks" element={<Tasks />} />
           <Route path="/" element={<Home />} />
         </Routes>
       </BrowserRouter>
