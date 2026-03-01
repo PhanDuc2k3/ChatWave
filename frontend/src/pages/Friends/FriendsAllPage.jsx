@@ -76,7 +76,6 @@ export default function FriendsAllPage() {
     <MainLayout
       headerContent={headerContent}
       showSearch={false}
-      showHeaderActions={false}
     >
       <div className="w-full flex flex-col md:flex-row gap-4">
         {/* Left column: friends list */}
