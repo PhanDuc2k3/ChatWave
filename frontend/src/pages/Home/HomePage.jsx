@@ -1,58 +1,90 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import MainLayout from "../../layouts/MainLayout";
-import { initialPosts } from "./homeData";
 import HomeCreatePost from "./HomeCreatePost";
 import HomePostCard from "./HomePostCard";
+import { postApi } from "../../api/postApi";
 
 export default function HomePage() {
-  const [posts, setPosts] = useState(initialPosts);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const handleCreatePost = ({ text, imageUrl }) => {
-    const newPost = {
-      id: Date.now(),
-      authorName: "User",
-      authorSubtitle: "Thành viên ChatWave",
-      timeAgo: "Vừa xong",
-      text,
-      imageUrl,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      isLiked: false,
-      commentList: [],
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        const data = await postApi.getAll();
+        if (isMounted) {
+          setPosts(data || []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err?.message || "Không tải được danh sách bài viết.");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
     };
 
-    setPosts((prev) => [newPost, ...prev]);
+    fetchPosts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleCreatePost = async ({ text, imageUrl }) => {
+    try {
+      const user =
+        JSON.parse(localStorage.getItem("chatwave_user") || "null") || {};
+
+      const newPost = await postApi.create({
+        authorName: user.username || "User",
+        authorSubtitle: "Thành viên ChatWave",
+        text,
+        imageUrl,
+      });
+
+      setPosts((prev) => [newPost, ...prev]);
+    } catch (err) {
+      // eslint-disable-next-line no-alert
+      alert(err?.message || "Không tạo được bài viết, vui lòng thử lại.");
+    }
   };
 
-  const handleToggleLike = (postId) => {
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id !== postId) return p;
-        const isLiked = !p.isLiked;
-        const likes = isLiked ? p.likes + 1 : Math.max(p.likes - 1, 0);
-        return { ...p, isLiked, likes };
-      })
-    );
+  const handleToggleLike = async (postId) => {
+    try {
+      const updated = await postApi.like(postId);
+      setPosts((prev) =>
+        prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+      );
+    } catch (err) {
+      // eslint-disable-next-line no-alert
+      alert(err?.message || "Không thể like bài viết.");
+    }
   };
 
-  const handleAddComment = (postId, text) => {
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id !== postId) return p;
-        const newComment = {
-          id: Date.now(),
-          author: "User",
-          text,
-          timeAgo: "Vừa xong",
-        };
-        return {
-          ...p,
-          commentList: [newComment, ...(p.commentList || [])],
-          comments: p.comments + 1,
-        };
-      })
-    );
+  const handleAddComment = async (postId, text) => {
+    try {
+      const user =
+        JSON.parse(localStorage.getItem("chatwave_user") || "null") || {};
+
+      const updated = await postApi.addComment(postId, {
+        author: user.username || "User",
+        text,
+      });
+
+      setPosts((prev) =>
+        prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+      );
+    } catch (err) {
+      // eslint-disable-next-line no-alert
+      alert(err?.message || "Không thể thêm bình luận.");
+    }
   };
 
   const handleShare = (postId) => {
@@ -70,16 +102,28 @@ export default function HomePage() {
       <div className="w-full flex flex-col items-center py-4 md:py-6 space-y-4">
         <HomeCreatePost onCreatePost={handleCreatePost} />
 
+        {error && (
+          <p className="text-sm text-red-500">
+            {error}
+          </p>
+        )}
+
         <div className="w-full flex flex-col gap-4">
-          {posts.map((post) => (
-            <HomePostCard
-              key={post.id}
-              post={post}
-              onToggleLike={handleToggleLike}
-              onAddComment={handleAddComment}
-              onShare={handleShare}
-            />
-          ))}
+          {loading ? (
+            <p className="text-center text-sm text-gray-500">
+              Đang tải bài viết...
+            </p>
+          ) : (
+            posts.map((post) => (
+              <HomePostCard
+                key={post.id}
+                post={post}
+                onToggleLike={handleToggleLike}
+                onAddComment={handleAddComment}
+                onShare={handleShare}
+              />
+            ))
+          )}
         </div>
       </div>
     </MainLayout>

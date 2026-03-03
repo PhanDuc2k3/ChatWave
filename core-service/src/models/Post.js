@@ -25,6 +25,17 @@ const postSchema = new mongoose.Schema(
   }
 );
 
+// Chuẩn hoá trả về: thêm field id, bỏ _id và __v
+function normalize(doc, ret) {
+  ret.id = ret._id;
+  delete ret._id;
+  delete ret.__v;
+  return ret;
+}
+
+postSchema.set("toJSON", { transform: normalize });
+postSchema.set("toObject", { transform: normalize });
+
 const Post = mongoose.model("Post", postSchema);
 
 module.exports = Post;

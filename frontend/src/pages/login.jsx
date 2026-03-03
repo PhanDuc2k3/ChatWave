@@ -1,10 +1,49 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import logo from "../assets/logo-web.png";
 import login from "../assets/login.png";
 import bgSocial from "../assets/bglogin.png";
+import { authApi } from "../api/authApi";
 
 export default function Login() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    if (!trimmedEmail || !trimmedPassword) {
+      toast.error("Vui lòng nhập đầy đủ email và mật khẩu.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const data = await authApi.login({
+        email: trimmedEmail,
+        password: trimmedPassword,
+      });
+
+      if (data?.token) {
+        localStorage.setItem("chatwave_token", data.token);
+        localStorage.setItem("chatwave_user", JSON.stringify(data.user));
+      }
+
+      toast.success("Đăng nhập thành công!");
+      navigate("/");
+    } catch (err) {
+      const message = err?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col relative">
       {/* Blurred Background */}
@@ -15,7 +54,7 @@ export default function Login() {
 
       {/* Centered Form (same style as register, no movement) */}
       <div className="relative z-10 flex-1 flex items-center justify-center w-full">
-        <form className="container max-w-6xl mx-auto">
+        <form className="container max-w-6xl mx-auto" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 rounded-[25px] overflow-hidden shadow-xl bg-white/80 backdrop-blur-md border-[6px] border-white">
             {/* LEFT IMAGE */}
             <div className="hidden md:block">
@@ -49,6 +88,8 @@ export default function Login() {
                     type="email"
                     placeholder="Email"
                     className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
 
@@ -58,6 +99,8 @@ export default function Login() {
                     type="password"
                     placeholder="Mật khẩu"
                     className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                   />
                   <i className="fas fa-eye absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" />
                 </div>
@@ -65,9 +108,10 @@ export default function Login() {
                 {/* LOGIN BUTTON */}
                 <button
                   type="submit"
-                  className="w-full h-[60px] rounded-full text-white text-lg font-semibold bg-linear-to-r from-[#F5C46A] to-[#FA8DAE] hover:bg-linear-to-l transition mt-4"
+                  disabled={loading}
+                  className="w-full h-[60px] rounded-full text-white text-lg font-semibold bg-linear-to-r from-[#F5C46A] to-[#FA8DAE] hover:bg-linear-to-l transition mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Đăng nhập
+                  {loading ? "Đang đăng nhập..." : "Đăng nhập"}
                 </button>
 
                 {/* REGISTER LINK */}
