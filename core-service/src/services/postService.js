@@ -32,13 +32,21 @@ async function addComment(postId, payload) {
   const updated = await postRepository.addComment(postId, {
     author: payload.author,
     text: payload.text,
-    timeAgo: payload.timeAgo || "Vừa xong",
   });
   return updated;
 }
 
-async function likePost(postId) {
-  return postRepository.incrementLike(postId, 1);
+async function likePost(postId, userId) {
+  if (!userId) {
+    const err = new Error("userId là bắt buộc");
+    err.statusCode = 400;
+    throw err;
+  }
+  return postRepository.toggleLike(postId, userId);
+}
+
+async function deletePost(postId) {
+  return postRepository.remove(postId);
 }
 
 module.exports = {
@@ -47,5 +55,6 @@ module.exports = {
   createPost,
   addComment,
   likePost,
+  deletePost,
 };
 

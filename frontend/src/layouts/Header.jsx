@@ -7,8 +7,19 @@ export default function Header() {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
+    // Đọc thông tin user từ localStorage khi header mount
+    try {
+      const raw = localStorage.getItem("chatwave_user");
+      if (raw) {
+        setCurrentUser(JSON.parse(raw));
+      }
+    } catch {
+      // ignore parse error
+    }
+
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
@@ -18,8 +29,17 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const displayName =
+    currentUser?.username ||
+    currentUser?.email ||
+    currentUser?.name ||
+    "User";
+  const initial = displayName.charAt(0).toUpperCase();
+
   const handleLogout = () => {
     setDropdownOpen(false);
+    localStorage.removeItem("chatwave_token");
+    localStorage.removeItem("chatwave_user");
     navigate("/login");
   };
 
@@ -48,10 +68,10 @@ export default function Header() {
           className="hidden sm:flex items-center gap-2 hover:opacity-90 transition rounded-lg py-1 pr-1"
         >
           <div className="w-8 h-8 rounded-full bg-[#FA8DAE] flex items-center justify-center text-white font-semibold">
-            U
+            {initial}
           </div>
-          <span className="font-medium text-gray-800 text-sm md:text-base">
-            User
+          <span className="font-medium text-gray-800 text-sm md:text-base max-w-[140px] truncate">
+            {displayName}
           </span>
         </button>
 

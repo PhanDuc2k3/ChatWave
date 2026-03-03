@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Heart, MessageCircle, Share2 } from "lucide-react";
 
 export default function HomePostCard({
@@ -6,14 +6,74 @@ export default function HomePostCard({
   onToggleLike,
   onAddComment,
   onShare,
+  onDelete,
+  onOpenComments,
+  showAllComments = false,
 }) {
   const [commentText, setCommentText] = useState("");
+
+  const currentUserInitial = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("chatwave_user");
+      if (!raw) return "U";
+      const user = JSON.parse(raw);
+      const name = user.username || user.email || user.name || "User";
+      return name.charAt(0).toUpperCase();
+    } catch {
+      return "U";
+    }
+  }, []);
+
+  const hasLiked = !!post.isLiked;
+
+  const likedTooltip = useMemo(() => {
+    const total = post.likes || 0;
+    if (!total) return "Chưa có ai yêu thích";
+
+    if (!hasLiked) {
+      return `${total} người đã yêu thích`;
+    }
+
+    if (total === 1) return "Bạn đã yêu thích";
+    return `Bạn và ${total - 1} người khác đã yêu thích`;
+  }, [post.likes, hasLiked]);
+
+  const formatPostTime = () => {
+    if (post.timeAgo) return post.timeAgo;
+    if (!post.createdAt) return "";
+    const created = new Date(post.createdAt).getTime();
+    const diffSec = Math.max(1, Math.floor((Date.now() - created) / 1000));
+    if (diffSec < 60) return "Vừa xong";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} phút trước`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour} giờ trước`;
+    const diffDay = Math.floor(diffHour / 24);
+    return `${diffDay} ngày trước`;
+  };
+
+  const formatTimeAgo = (cmt) => {
+    if (cmt.timeAgo) return cmt.timeAgo;
+    if (!cmt.createdAt) return "";
+    const created = new Date(cmt.createdAt).getTime();
+    const diffMs = Date.now() - created;
+    const diffSec = Math.max(1, Math.floor(diffMs / 1000));
+    if (diffSec < 60) return "Vừa xong";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} phút trước`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour} giờ trước`;
+    const diffDay = Math.floor(diffHour / 24);
+    return `${diffDay} ngày trước`;
+  };
 
   const handleSubmitComment = (e) => {
     e.preventDefault();
     const trimmed = commentText.trim();
     if (!trimmed) return;
-    onAddComment(post.id, trimmed);
+    const postId = post.id || post._id;
+    if (!postId) return;
+    onAddComment(postId, trimmed);
     setCommentText("");
   };
 
@@ -31,16 +91,19 @@ export default function HomePostCard({
             {post.authorName}
           </p>
           <p className="text-[11px] md:text-xs text-gray-500">
-            {post.authorSubtitle} · {post.timeAgo}
+            {post.authorSubtitle} · {formatPostTime()}
           </p>
         </div>
-        <button
-          type="button"
-          className="text-gray-400 hover:text-gray-600 text-lg"
-          aria-label="Tùy chọn"
-        >
-          •••
-        </button>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(post.id || post._id)}
+            className="text-gray-400 hover:text-gray-600 text-lg px-2"
+            aria-label="Gỡ bài viết"
+          >
+            •••
+          </button>
+        )}
       </header>
 
       {/* Content */}
@@ -73,21 +136,21 @@ export default function HomePostCard({
       <div className="mt-3 border-t border-gray-100 pt-2 flex items-center justify-between text-xs md:text-sm">
         <button
           type="button"
-          onClick={() => onToggleLike(post.id)}
-          className={`flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-50 ${
-            post.isLiked ? "text-[#FA8DAE]" : "text-gray-600"
-          }`}
+          onClick={() => onToggleLike(post.id || post._id)}
+          title={likedTooltip}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-50 ${hasLiked ? "text-[#FA8DAE]" : "text-gray-600"
+            }`}
         >
           <Heart
-            className={`w-4 h-4 ${
-              post.isLiked ? "fill-[#FA8DAE] text-[#FA8DAE]" : ""
-            }`}
+            className={`w-4 h-4 ${hasLiked ? "fill-[#FA8DAE] text-[#FA8DAE]" : ""
+              }`}
           />
           <span>Yêu thích</span>
         </button>
 
         <button
           type="button"
+          onClick={() => onOpenComments && onOpenComments(post)}
           className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-50 text-gray-600"
         >
           <MessageCircle className="w-4 h-4" />
@@ -96,7 +159,7 @@ export default function HomePostCard({
 
         <button
           type="button"
-          onClick={() => onShare(post.id)}
+          onClick={() => onShare(post.id || post._id)}
           className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-50 text-gray-600"
         >
           <Share2 className="w-4 h-4" />
@@ -106,8 +169,8 @@ export default function HomePostCard({
 
       {/* Comments */}
       <div className="mt-3 space-y-2">
-        {post.commentList?.slice(0, 3).map((cmt) => (
-          <div key={cmt.id} className="flex gap-2">
+        {(showAllComments ? post.commentList || [] : post.commentList?.slice(0, 3) || []).map((cmt, index) => (
+          <div key={cmt.id || cmt._id || index} className="flex gap-2">
             <div className="w-7 h-7 rounded-full bg-[#6CB8FF]/20 flex items-center justify-center text-[11px] font-semibold text-[#6CB8FF]">
               {cmt.author.charAt(0)}
             </div>
@@ -116,7 +179,9 @@ export default function HomePostCard({
                 {cmt.author}
               </p>
               <p className="text-xs text-gray-700">{cmt.text}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{cmt.timeAgo}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                {formatTimeAgo(cmt)}
+              </p>
             </div>
           </div>
         ))}
@@ -126,7 +191,7 @@ export default function HomePostCard({
           className="flex items-center gap-2 mt-2"
         >
           <div className="w-7 h-7 rounded-full bg-[#FA8DAE]/20 flex items-center justify-center text-[11px] font-semibold text-[#FA8DAE]">
-            U
+            {currentUserInitial}
           </div>
           <input
             type="text"

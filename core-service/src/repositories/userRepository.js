@@ -1,11 +1,20 @@
 const User = require("../models/User");
 
 async function findAll() {
-  return User.find().lean();
+  const users = await User.find().lean();
+  return users.map((u) => {
+    const copy = { ...u };
+    delete copy.passwordHash;
+    return copy;
+  });
 }
 
 async function findById(id) {
-  return User.findById(id).lean();
+  const user = await User.findById(id).lean();
+  if (!user) return null;
+  const copy = { ...user };
+  delete copy.passwordHash;
+  return copy;
 }
 
 async function findByEmail(email) {

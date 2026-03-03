@@ -1,8 +1,20 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 export default function HomeCreatePost({ onCreatePost }) {
   const [text, setText] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+
+  const currentInitial = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("chatwave_user");
+      if (!raw) return "U";
+      const user = JSON.parse(raw);
+      const name = user.username || user.email || user.name || "User";
+      return name.charAt(0).toUpperCase();
+    } catch {
+      return "U";
+    }
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -27,7 +39,7 @@ export default function HomeCreatePost({ onCreatePost }) {
     >
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-full bg-[#FA8DAE]/20 flex items-center justify-center text-sm font-semibold text-[#FA8DAE]">
-          U
+          {currentInitial}
         </div>
 
         <div className="flex-1 space-y-2">

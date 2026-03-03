@@ -17,8 +17,12 @@ export const postApi = {
     return axiosClient.post(`/posts/${postId}/comments`, payload);
   },
 
-  like(postId) {
-    return axiosClient.post(`/posts/${postId}/like`);
+  like(postId, userId) {
+    return axiosClient.post(`/posts/${postId}/like`, { userId });
+  },
+
+  remove(postId) {
+    return axiosClient.delete(`/posts/${postId}`);
   },
 };
 

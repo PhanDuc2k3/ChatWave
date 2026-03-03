@@ -1,12 +1,57 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { User, MapPin, Briefcase, GraduationCap, Calendar } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { mockProfile } from "./profileData";
+import { userApi } from "../../api/userApi";
+import toast from "react-hot-toast";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("posts"); // posts | about
+  const [profile, setProfile] = useState(mockProfile);
+  const [loading, setLoading] = useState(true);
 
-  const { name, username, bio, stats, info } = mockProfile;
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchProfile = async () => {
+      try {
+        const stored = localStorage.getItem("chatwave_user");
+        const user = stored ? JSON.parse(stored) : null;
+
+        if (!user?.id && !user?._id) {
+          setProfile(mockProfile);
+          setLoading(false);
+          return;
+        }
+
+        const fresh = await userApi.getById(user.id || user._id);
+        if (isMounted && fresh) {
+          setProfile((prev) => ({
+            ...prev,
+            name: fresh.username || fresh.name || prev.name,
+            username: fresh.email || prev.username,
+          }));
+        }
+      } catch (err) {
+        if (isMounted) {
+          toast.error("Không tải được thông tin hồ sơ. Hiển thị dữ liệu mặc định.");
+          setProfile(mockProfile);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const { name, username, bio, stats, info } = profile;
   const initial = name.charAt(0);
 
   const headerContent = (
@@ -24,6 +69,11 @@ export default function ProfilePage() {
   return (
     <MainLayout headerContent={headerContent}>
       <div className="w-full max-w-4xl mx-auto py-6 space-y-6 px-2">
+        {loading && (
+          <p className="text-center text-sm text-gray-500">
+            Đang tải hồ sơ...
+          </p>
+        )}
         {/* Cover + Avatar */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="h-32 md:h-40 bg-linear-to-r from-[#F5C46A] to-[#FA8DAE]" />

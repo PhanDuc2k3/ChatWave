@@ -44,11 +44,24 @@ async function addComment(req, res, next) {
 
 async function likePost(req, res, next) {
   try {
-    const post = await postService.likePost(req.params.id);
+    const { userId } = req.body || {};
+    const post = await postService.likePost(req.params.id, userId);
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
     res.json(post);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deletePost(req, res, next) {
+  try {
+    const deleted = await postService.deletePost(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    res.status(204).send();
   } catch (err) {
     next(err);
   }
@@ -60,5 +73,6 @@ module.exports = {
   createPost,
   addComment,
   likePost,
+  deletePost,
 };
 

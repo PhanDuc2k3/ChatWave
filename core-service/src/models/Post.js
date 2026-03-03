@@ -4,7 +4,7 @@ const commentSchema = new mongoose.Schema(
   {
     author: { type: String, required: true },
     text: { type: String, required: true },
-    timeAgo: { type: String, default: "" }, // frontend có thể tự format lại
+    createdAt: { type: Date, default: Date.now },
   },
   { _id: true }
 );
@@ -18,6 +18,7 @@ const postSchema = new mongoose.Schema(
     likes: { type: Number, default: 0 },
     comments: { type: Number, default: 0 },
     shares: { type: Number, default: 0 },
+    likedBy: { type: [String], default: [] }, // user ids đã like
     commentList: { type: [commentSchema], default: [] },
   },
   {

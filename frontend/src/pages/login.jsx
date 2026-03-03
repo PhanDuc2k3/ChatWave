@@ -5,6 +5,7 @@ import logo from "../assets/logo-web.png";
 import login from "../assets/login.png";
 import bgSocial from "../assets/bglogin.png";
 import { authApi } from "../api/authApi";
+import { userApi } from "../api/userApi";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -31,7 +32,17 @@ export default function Login() {
 
       if (data?.token) {
         localStorage.setItem("chatwave_token", data.token);
-        localStorage.setItem("chatwave_user", JSON.stringify(data.user));
+
+        // Gọi API profile bằng id user để lấy thông tin mới nhất
+        const profile =
+          data.user?.id || data.user?._id
+            ? await userApi.getById(data.user.id || data.user._id)
+            : data.user;
+
+        localStorage.setItem(
+          "chatwave_user",
+          JSON.stringify(profile || data.user)
+        );
       }
 
       toast.success("Đăng nhập thành công!");

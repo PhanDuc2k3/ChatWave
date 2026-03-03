@@ -28,6 +28,16 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+function normalize(doc, ret) {
+  ret.id = ret._id;
+  delete ret._id;
+  delete ret.__v;
+  return ret;
+}
+
+userSchema.set("toJSON", { transform: normalize });
+userSchema.set("toObject", { transform: normalize });
+
 const User = mongoose.model("User", userSchema);
 
 module.exports = User;
