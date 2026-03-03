@@ -1,88 +1,130 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import login from "../assets/login.png";
 import logo from "../assets/logo-web.jpg";
+import bgSocial from "../assets/bglogin.png";
 
 export default function Register() {
+  const handleRegisterClick = (e) => {
+    e.preventDefault(); // TODO: xử lý submit thật sau
+  };
+
   return (
-    <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center"
-      style={{ backgroundImage: "url('/bglogin.png')" }}
-    >
-      <form className="container max-w-6xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 rounded-[25px] overflow-hidden shadow-xl">
-          
-          {/* LEFT */}
-          <div className="hidden md:block">
-            <img
-              src={login}
-              alt="register"
-              className="w-full h-full object-cover"
-            />
-          </div>
+    <div className="min-h-screen flex flex-col relative">
+      {/* Blurred Background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center filter blur-md"
+        style={{ backgroundImage: `url(${bgSocial})` }}
+      />
 
-          {/* RIGHT */}
-          <div className="bg-white relative p-10 flex flex-col items-center">
-            <img
-              src={logo}
-              alt="logo"
-              className="w-[150px] absolute top-5 right-5"
-            />
+      {/* Centered Form - same style as login (no movement) */}
+      <div className="relative z-10 flex-1 flex items-center justify-center w-full">
+        <form className="container max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 rounded-[25px] overflow-hidden shadow-xl bg-white/80 backdrop-blur-md border-[6px] border-white">
+            {/* LEFT IMAGE */}
+            <div className="hidden md:block">
+              <img
+                src={login}
+                alt="register"
+                className="w-full h-full object-cover"
+              />
+            </div>
 
-            <div className="mt-32 w-full text-center">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-[#F5C46A] to-[#FA8DAE] bg-clip-text text-transparent mb-3">
-                ChatWave
-              </h1>
+            {/* RIGHT FORM */}
+            <div className="bg-white relative p-10 flex flex-col items-center">
+              <img
+                src={logo}
+                alt="logo"
+                className="w-[150px] absolute top-5 right-5"
+              />
 
-              <p className="text-gray-500 mb-8">
-                Đăng ký tài khoản ChatWave của bạn
-              </p>
+              <div className="mt-24 w-full text-center">
+                <h1 className="text-4xl font-bold bg-linear-to-r from-[#F5C46A] to-[#FA8DAE] bg-clip-text text-transparent mb-3">
+                  Tạo tài khoản ChatWave
+                </h1>
 
-              {/* INPUTS */}
-              {[
-                "Tên đăng nhập",
-                "Email",
-                "Số điện thoại",
-                "Mật khẩu",
-                "Nhập lại mật khẩu",
-              ].map((label, index) => (
-                <div key={index} className="relative mb-4">
+                <p className="text-gray-500 mb-8">
+                  Đăng ký tài khoản mới để bắt đầu kết nối cùng mọi người.
+                </p>
+
+                {/* USERNAME */}
+                <div className="relative mb-4">
                   <input
-                    type={
-                      label.toLowerCase().includes("mật")
-                        ? "password"
-                        : "text"
-                    }
-                    placeholder={label}
+                    type="text"
+                    placeholder="Tên đăng nhập"
                     className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none"
                   />
-                  {label.toLowerCase().includes("mật") && (
-                    <i className="fas fa-eye absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" />
-                  )}
                 </div>
-              ))}
 
-              {/* BUTTON */}
-              <button
-                type="submit"
-                className="w-full h-[60px] rounded-full text-white text-lg font-semibold bg-gradient-to-r from-[#F5C46A] to-[#FA8DAE] hover:bg-gradient-to-l transition mt-4"
-              >
-                Đăng ký
-              </button>
+                {/* EMAIL */}
+                <div className="relative mb-4">
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none"
+                  />
+                </div>
 
-              {/* LOGIN LINK */}
-              <div className="mt-6 text-lg">
-                Bạn đã có tài khoản?
-                <Link to="/login" className="ml-2">
-                  <span className="bg-gradient-to-r from-[#F5C46A] to-[#FA8DAE] bg-clip-text text-transparent font-semibold">
-                    Đăng nhập
-                  </span>
-                </Link>
+                {/* PHONE */}
+                <div className="relative mb-4">
+                  <input
+                    type="tel"
+                    placeholder="Số điện thoại"
+                    className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none"
+                  />
+                </div>
+
+                {/* PASSWORD */}
+                <div className="relative mb-4">
+                  <input
+                    type="password"
+                    placeholder="Mật khẩu"
+                    className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none"
+                  />
+                  <i className="fas fa-eye absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" />
+                </div>
+
+                {/* CONFIRM PASSWORD */}
+                <div className="relative mb-4">
+                  <input
+                    type="password"
+                    placeholder="Nhập lại mật khẩu"
+                    className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none"
+                  />
+                  <i className="fas fa-eye absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" />
+                </div>
+
+                {/* REGISTER BUTTON */}
+                <button
+                  type="submit"
+                  onClick={handleRegisterClick}
+                  className="w-full h-[60px] rounded-full text-white text-lg font-semibold bg-linear-to-r from-[#F5C46A] to-[#FA8DAE] hover:bg-linear-to-l transition mt-4"
+                >
+                  Đăng ký
+                </button>
+
+                {/* LOGIN LINK */}
+                <div className="mt-6 text-lg">
+                  Bạn đã có tài khoản?
+                  <Link
+                    to="/login"
+                    className="ml-2 bg-transparent border-none cursor-pointer p-0"
+                  >
+                    <span className="bg-linear-to-r from-[#F5C46A] to-[#FA8DAE] bg-clip-text text-transparent font-semibold">
+                      Đăng nhập
+                    </span>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
+        </form>
+      </div>
 
-        </div>
-      </form>
+      {/* Footer */}
+      <div className="relative z-10 w-full py-3 text-center text-xs text-gray-500">
+        made by MDuc
+      </div>
     </div>
   );
 }

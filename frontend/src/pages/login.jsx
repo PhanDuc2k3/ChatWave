@@ -1,79 +1,97 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import login from "../assets/login.png";
 import logo from "../assets/logo-web.png";
+import login from "../assets/login.png";
+import bgSocial from "../assets/bglogin.png";
 
 export default function Login() {
   return (
-    <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center"
-      style={{ backgroundImage: "url('../../assets/bglogin.png')" }}
-    >
-      <form className="w-full max-w-5xl px-4">
-        <div className="relative rounded-[25px] shadow-lg bg-white/80 backdrop-blur-md overflow-hidden flex flex-col md:flex-row">
-          {/* LEFT BACKGROUND IMAGE (BLURRED) */}
-          <div className="w-full md:w-[45%] h-40 md:h-auto relative overflow-hidden">
-            <div
-              className="absolute inset-0 bg-cover bg-center filter blur-sm scale-110"
-              style={{ backgroundImage: `url(${login})` }}
-            />
-            <div className="absolute inset-0 bg-white/30" />
-          </div>
+    <div className="min-h-screen flex flex-col relative">
+      {/* Blurred Background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center filter blur-md"
+        style={{ backgroundImage: `url(${bgSocial})` }}
+      />
 
-          {/* RIGHT FORM */}
-          <div className="w-full md:w-[55%] bg-white py-10 px-8 md:px-12 relative">
-            <img
-              src={logo}
-              alt="logo"
-              className="w-[200px] rounded-[25px] absolute top-5 right-5"
-            />
+      {/* Centered Form (same style as register, no movement) */}
+      <div className="relative z-10 flex-1 flex items-center justify-center w-full">
+        <form className="container max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 rounded-[25px] overflow-hidden shadow-xl bg-white/80 backdrop-blur-md border-[6px] border-white">
+            {/* LEFT IMAGE */}
+            <div className="hidden md:block">
+              <img
+                src={login}
+                alt="login"
+                className="w-full h-full object-cover"
+              />
+            </div>
 
-            <div className="mt-24 md:mt-40 text-center md:text-center md:mr-16">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-[#F5C46A] to-[#FA8DAE] bg-clip-text text-transparent -mt-24 md:-mt-32">
-                ChatWave
-              </h1>
-              <span className="block text-[#626262] mb-10">
-                Đăng nhập bằng tài khoản Chatwave
-              </span>
+            {/* RIGHT FORM */}
+            <div className="bg-white relative p-10 flex flex-col items-center">
+              <img
+                src={logo}
+                alt="logo"
+                className="w-[150px] absolute top-5 right-5"
+              />
 
-              {/* EMAIL */}
-              <div className="relative mb-6">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  className="w-full h-[50px] rounded-full border-2 border-[#939090] px-10 py-2 outline-none focus:border-[#F5C46A] transition"
-                />
-              </div>
+              <div className="mt-24 w-full text-center">
+                <h1 className="text-4xl font-bold bg-linear-to-r from-[#F5C46A] to-[#FA8DAE] bg-clip-text text-transparent mb-3">
+                  Chào mừng bạn trở lại
+                </h1>
 
-              {/* PASSWORD */}
-              <div className="relative mb-6">
-                <input
-                  type="password"
-                  placeholder="Mật khẩu"
-                  className="w-full h-[50px] rounded-full border-2 border-[#939090] px-10 py-2 outline-none focus:border-[#F5C46A] transition"
-                />
-                <i className="fas fa-eye absolute right-4 top-1/2 -translate-y-1/2 text-[#939090]" />
-              </div>
+                <p className="text-gray-500 mb-8">
+                  Đăng nhập bằng tài khoản ChatWave của bạn
+                </p>
 
-              <button
-                className="w-full h-[60px] rounded-full bg-gradient-to-r from-[#F5C46A] to-[#FA8DAE] text-white text-lg font-semibold mt-4 hover:bg-gradient-to-l transition"
-                type="submit"
-              >
-                Đăng nhập
-              </button>
+                {/* EMAIL */}
+                <div className="relative mb-4">
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none"
+                  />
+                </div>
 
-              <div className="text-[20px] mt-12">
-                Bạn chưa có tài khoản?
-                <Link to="/register" className="ml-1 no-underline">
-                  <span className="bg-gradient-to-r from-[#F5C46A] to-[#FA8DAE] bg-clip-text text-transparent">
-                    Đăng ký
-                  </span>
-                </Link>
+                {/* PASSWORD */}
+                <div className="relative mb-4">
+                  <input
+                    type="password"
+                    placeholder="Mật khẩu"
+                    className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none"
+                  />
+                  <i className="fas fa-eye absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" />
+                </div>
+
+                {/* LOGIN BUTTON */}
+                <button
+                  type="submit"
+                  className="w-full h-[60px] rounded-full text-white text-lg font-semibold bg-linear-to-r from-[#F5C46A] to-[#FA8DAE] hover:bg-linear-to-l transition mt-4"
+                >
+                  Đăng nhập
+                </button>
+
+                {/* REGISTER LINK */}
+                <div className="mt-6 text-lg">
+                  Bạn chưa có tài khoản?
+                  <Link
+                    to="/register"
+                    className="ml-2 bg-transparent border-none cursor-pointer p-0"
+                  >
+                    <span className="bg-linear-to-r from-[#F5C46A] to-[#FA8DAE] bg-clip-text text-transparent font-semibold">
+                      Đăng ký
+                    </span>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
+
+      {/* Footer */}
+      <div className="relative z-10 w-full py-3 text-center text-xs text-gray-500">
+        made by MDuc
+      </div>
     </div>
   );
 }
