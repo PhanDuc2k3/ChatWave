@@ -1,0 +1,35 @@
+{
+  "name": "core-service",
+  "version": "1.0.0",
+  "description": "Core microservice for ChatWave (user, auth, and core data APIs).",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "lint": "echo \"no lint configured\""
+  },
+  "keywords": [
+    "chatwave",
+    "core-service",
+    "microservice",
+    "node",
+    "express"
+  ],
+  "author": "MDuc",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.5.0",
+    "morgan": "^1.10.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
+
