@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   X,
   ClipboardList,
@@ -66,6 +66,31 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, inline = fal
   if (!task) return null;
 
   const StatusIcon = STATUS_ICONS[task.status];
+  const [submissionFiles, setSubmissionFiles] = useState([]);
+  const [completionComment, setCompletionComment] = useState("");
+  const [submittedInfo, setSubmittedInfo] = useState(null);
+
+  const handleFilesChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    setSubmissionFiles(files);
+  };
+
+  const handleSubmitCompletion = () => {
+    const hasContent =
+      submissionFiles.length > 0 || completionComment.trim().length > 0;
+    if (!hasContent) return;
+
+    if (onUpdateStatus && task.status !== "done") {
+      onUpdateStatus(task.id, "done");
+    }
+
+    const timeLabel = new Date().toLocaleString();
+    setSubmittedInfo({
+      timeLabel,
+      filesCount: submissionFiles.length,
+      comment: completionComment.trim() || null,
+    });
+  };
   const hasDescription = task.description && (
     task.description.what ||
     task.description.purpose ||
@@ -271,36 +296,134 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, inline = fal
             )}
           </Section>
 
-          {/* 11. Trạng thái task - người được giao có thể chỉnh */}
+          {/* 11. Gửi file & comment khi hoàn thành */}
+          <Section title="Gửi file & comment khi hoàn thành" icon={FileText}>
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500">
+                Đính kèm file bàn giao và để lại lời nhắn khi bạn hoàn thành task này.
+              </p>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">
+                  File bàn giao
+                </label>
+                <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-600 cursor-pointer hover:border-[#FA8DAE] hover:bg-[#FFF7F0] transition">
+                  <FileText className="w-4 h-4 text-[#FA8DAE]" />
+                  <span>Chọn file từ máy</span>
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={handleFilesChange}
+                  />
+                </label>
+                {submissionFiles.length > 0 && (
+                  <ul className="list-disc list-inside text-xs text-gray-600 space-y-0.5 mt-1">
+                    {submissionFiles.map((file, idx) => (
+                      <li key={idx}>{file.name}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">
+                  Comment khi hoàn thành
+                </label>
+                <textarea
+                  rows={3}
+                  value={completionComment}
+                  onChange={(e) => setCompletionComment(e.target.value)}
+                  className="w-full text-xs rounded-xl border border-gray-200 px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#FA8DAE]/50 focus:border-[#FA8DAE]"
+                  placeholder="Mô tả ngắn gọn những gì bạn đã làm, lưu ý cho người giao task..."
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] text-gray-400">
+                  Bạn có thể gửi file và comment bất cứ lúc nào; nếu chưa ở trạng thái{" "}
+                  <span className="font-medium">Đã xong</span>, hệ thống sẽ tự đánh dấu giúp bạn.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSubmitCompletion}
+                  disabled={
+                    submissionFiles.length === 0 &&
+                    completionComment.trim().length === 0
+                  }
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition ${
+                    submissionFiles.length === 0 &&
+                    completionComment.trim().length === 0
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-[#FA8DAE] text-white shadow-sm hover:bg-[#F9789E]"
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Gửi & đánh dấu đã xong
+                </button>
+              </div>
+
+              {submittedInfo && (
+                <p className="text-[11px] text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mt-1">
+                  Đã lưu thông tin hoàn thành lúc{" "}
+                  <span className="font-semibold">{submittedInfo.timeLabel}</span>
+                  {submittedInfo.filesCount > 0 && (
+                    <>
+                      {" "}
+                      · {submittedInfo.filesCount} file
+                    </>
+                  )}
+                  {submittedInfo.comment && (
+                    <>
+                      {" "}
+                      · Comment: <span className="italic">{submittedInfo.comment}</span>
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+          </Section>
+
+          {/* 12. Trạng thái task */}
           <Section title="Trạng thái task" icon={ClipboardList}>
             <div className="space-y-2">
-              <p className="text-xs text-gray-500 mb-2">Chọn trạng thái (chỉnh sửa được):</p>
-              <div className="flex flex-wrap gap-2">
-                {(["pending", "in_progress", "done"]).map((status) => {
-                  const Icon = STATUS_ICONS[status];
-                  const isActive = task.status === status;
-                  return (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => onUpdateStatus?.(task.id, status)}
-                      className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition ${
-                        isActive
-                          ? STATUS_STYLES[status]
-                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <Icon
-                        className={`w-4 h-4 ${status === "in_progress" && isActive ? "animate-spin" : ""}`}
-                      />
-                      {STATUS_LABELS[status]}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-gray-400 mt-2">
-                Hiện tại: <span className="font-medium text-gray-700">{STATUS_LABELS[task.status]}</span>
+              <p className="text-xs text-gray-500">
+                Luồng trạng thái: <span className="font-medium">Chờ làm → Đang làm → Đã xong</span>.
               </p>
+
+              {task.status === "pending" && (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-gray-500 max-w-[60%]">
+                    Hiện tại task đang ở trạng thái{" "}
+                    <span className="font-medium text-amber-700">Chờ làm</span>.
+                    Bấm nút bên phải khi bạn xác nhận và bắt đầu làm task này.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateStatus?.(task.id, "in_progress")}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition"
+                  >
+                    <Loader2 className="w-4 h-4" />
+                    Bắt đầu làm
+                  </button>
+                </div>
+              )}
+
+              {task.status === "in_progress" && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Bạn đang <span className="font-semibold">Đang làm</span> task này. Khi hoàn thành,
+                  hãy dùng mục <span className="font-semibold">Gửi file & comment khi hoàn thành</span>{" "}
+                  phía trên để submit, hệ thống sẽ tự chuyển sang trạng thái{" "}
+                  <span className="font-semibold">Đã xong</span>.
+                </p>
+              )}
+
+              {task.status === "done" && (
+                <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  Task đã ở trạng thái <span className="font-semibold">Đã xong</span>. Bạn vẫn có thể
+                  xem lại file bàn giao và comment ở phía trên nếu cần.
+                </p>
+              )}
             </div>
           </Section>
         </div>

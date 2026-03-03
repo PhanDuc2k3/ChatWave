@@ -112,11 +112,13 @@ export const mockAssignedTasks = [
       { text: "Gửi đủ các file trong checklist Lan gửi", checked: true },
       { text: "Định dạng PDF, đúng tên file", checked: true },
     ],
-    deliverables: [
-      { label: "Link drive chứa PDF", link: null },
-    ],
+    deliverables: [{ label: "Link drive chứa PDF", link: null }],
     references: [],
     risksNotes: null,
+    // Thông tin khi đã hoàn thành (phục vụ màn hình admin)
+    completedAt: "05/03/2025 14:30",
+    completionNote:
+      "Đã export toàn bộ file PDF từ Figma, nén và gửi link drive cho Lan. Lan đã xác nhận nhận đủ file.",
   },
   {
     id: 4,
