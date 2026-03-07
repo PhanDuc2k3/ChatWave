@@ -9,9 +9,10 @@ import Tasks from "./pages/Tasks";
 import Meeting from "./pages/Meeting";
 import Profile from "./pages/Profile";
 import AdminTasks from "./pages/AdminTasks";
+
 export default function App() {
   return (
-  <div>
+    <div>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -22,9 +23,10 @@ export default function App() {
           <Route path="/meeting" element={<Meeting />} />
           <Route path="/admin/tasks" element={<AdminTasks />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:id" element={<Profile />} />
           <Route path="/" element={<Home />} />
         </Routes>
       </BrowserRouter>
-  </div>
+    </div>
   );
 }

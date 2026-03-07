@@ -61,6 +61,7 @@ export default function HomePage() {
       }
 
       const newPost = await postApi.create({
+        authorId: user.id || user._id,
         authorName: user.username || "User",
         authorSubtitle: "Thành viên ChatWave",
         text,

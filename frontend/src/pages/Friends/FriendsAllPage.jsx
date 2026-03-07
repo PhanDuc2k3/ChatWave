@@ -1,15 +1,39 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
-import { initialFriends } from "./friendsData";
+import { friendApi } from "../../api/friendApi";
+import toast from "react-hot-toast";
 
 export default function FriendsAllPage() {
   const navigate = useNavigate();
-  const [friends] = useState(initialFriends);
-  const [selectedFriendId, setSelectedFriendId] = useState(
-    initialFriends[0]?.id ?? null
-  );
+  const [friends, setFriends] = useState([]);
+  const [selectedFriendId, setSelectedFriendId] = useState(null);
+
+  useEffect(() => {
+    const storedUser =
+      JSON.parse(localStorage.getItem("chatwave_user") || "null") || null;
+    const currentUserId = storedUser?.id || storedUser?._id || null;
+    if (!currentUserId) return;
+
+    const load = async () => {
+      try {
+        const data = await friendApi.getFriends(currentUserId);
+        const mapped = (data || []).map((u) => ({
+          id: u.id,
+          name: u.username || u.email,
+          status: "Online",
+          lastActive: "",
+        }));
+        setFriends(mapped);
+        setSelectedFriendId(mapped[0]?.id ?? null);
+      } catch (err) {
+        toast.error(err?.message || "Không tải được danh sách bạn bè.");
+      }
+    };
+
+    load();
+  }, []);
 
   const selectedFriend =
     friends.find((f) => f.id === selectedFriendId) || friends[0] || null;
@@ -144,7 +168,7 @@ export default function FriendsAllPage() {
                       {selectedFriend.name.charAt(0)}
                     </div>
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-base md:text-xl font-semibold text-gray-900">
                       {selectedFriend.name}
                     </p>
@@ -153,6 +177,22 @@ export default function FriendsAllPage() {
                         ? "Đang hoạt động"
                         : `Hoạt động gần đây: ${selectedFriend.lastActive}`}
                     </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/profile/${selectedFriend.id}`)}
+                        className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-800 text-xs md:text-sm font-semibold hover:bg-gray-200 transition"
+                      >
+                        Xem trang cá nhân
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/message")}
+                        className="px-3 py-1.5 rounded-full bg-[#F9C96D] text-gray-800 text-xs md:text-sm font-semibold hover:bg-[#F7B944] transition"
+                      >
+                        Nhắn tin
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

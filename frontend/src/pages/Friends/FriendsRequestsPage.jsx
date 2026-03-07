@@ -1,16 +1,38 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, X, ArrowLeft } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
-import { initialFriends, initialFriendRequests } from "./friendsData";
+import { friendApi } from "../../api/friendApi";
+import toast from "react-hot-toast";
 
 export default function FriendsRequestsPage() {
   const navigate = useNavigate();
-  const [friends, setFriends] = useState(initialFriends);
-  const [requests, setRequests] = useState(initialFriendRequests);
-  const [selectedRequestId, setSelectedRequestId] = useState(
-    initialFriendRequests[0]?.id ?? null
-  );
+  const [friends, setFriends] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+
+  useEffect(() => {
+    const storedUser =
+      JSON.parse(localStorage.getItem("chatwave_user") || "null") || null;
+    const currentUserId = storedUser?.id || storedUser?._id || null;
+    if (!currentUserId) return;
+
+    const load = async () => {
+      try {
+        const reqData = await friendApi.getRequests(currentUserId);
+        setRequests(reqData.incoming || []);
+        const friendData = await friendApi.getFriends(currentUserId);
+        setFriends(friendData || []);
+        setSelectedRequestId(reqData.incoming?.[0]?.id ?? null);
+      } catch (err) {
+        toast.error(
+          err?.message || "Không tải được danh sách lời mời kết bạn."
+        );
+      }
+    };
+
+    load();
+  }, []);
 
   const filteredRequests = useMemo(() => {
     return requests;
@@ -21,37 +43,54 @@ export default function FriendsRequestsPage() {
     filteredRequests[0] ||
     null;
 
-  const handleAcceptRequest = (id) => {
-    setRequests((prev) => {
-      const req = prev.find((r) => r.id === id);
-      const next = prev.filter((r) => r.id !== id);
-      if (req) {
-        setFriends((currentFriends) => [
-          {
-            id: Date.now(),
-            name: req.name,
-            message: "Xin chào",
-            status: "Online",
-            lastActive: "05/2/2026",
-          },
-          ...currentFriends,
-        ]);
-      }
-      if (!next.find((r) => r.id === selectedRequestId)) {
-        setSelectedRequestId(next[0]?.id ?? null);
-      }
-      return next;
-    });
+  const handleAcceptRequest = async (id) => {
+    try {
+      const storedUser =
+        JSON.parse(localStorage.getItem("chatwave_user") || "null") || null;
+      const currentUserId = storedUser?.id || storedUser?._id || null;
+      await friendApi.respondRequest(id, currentUserId, "accept");
+      setRequests((prev) => {
+        const req = prev.find((r) => r.id === id);
+        const next = prev.filter((r) => r.id !== id);
+        if (req) {
+          setFriends((currentFriends) => [
+            {
+              id: req.otherUserId,
+              name: req.otherUserName,
+              status: "Online",
+              lastActive: "",
+            },
+            ...currentFriends,
+          ]);
+        }
+        if (!next.find((r) => r.id === selectedRequestId)) {
+          setSelectedRequestId(next[0]?.id ?? null);
+        }
+        return next;
+      });
+      toast.success("Đã chấp nhận lời mời kết bạn.");
+    } catch (err) {
+      toast.error(err?.message || "Không xác nhận được lời mời.");
+    }
   };
 
-  const handleDeclineRequest = (id) => {
-    setRequests((prev) => {
-      const next = prev.filter((r) => r.id !== id);
-      if (!next.find((r) => r.id === selectedRequestId)) {
-        setSelectedRequestId(next[0]?.id ?? null);
-      }
-      return next;
-    });
+  const handleDeclineRequest = async (id) => {
+    try {
+      const storedUser =
+        JSON.parse(localStorage.getItem("chatwave_user") || "null") || null;
+      const currentUserId = storedUser?.id || storedUser?._id || null;
+      await friendApi.respondRequest(id, currentUserId, "decline");
+      setRequests((prev) => {
+        const next = prev.filter((r) => r.id !== id);
+        if (!next.find((r) => r.id === selectedRequestId)) {
+          setSelectedRequestId(next[0]?.id ?? null);
+        }
+        return next;
+      });
+      toast.success("Đã xoá lời mời.");
+    } catch (err) {
+      toast.error(err?.message || "Không xoá được lời mời.");
+    }
   };
 
   const headerContent = (
@@ -132,7 +171,7 @@ export default function FriendsRequestsPage() {
 
           <div className="mt-2 max-h-80 overflow-y-auto space-y-1 pr-1">
             {filteredRequests.map((req) => {
-              const initial = req.name.charAt(0);
+              const initial = req.otherUserName.charAt(0);
               const isActive = selectedRequest && selectedRequest.id === req.id;
               return (
                 <button
@@ -150,7 +189,7 @@ export default function FriendsRequestsPage() {
                   </div>
                   <div className="flex-1">
                     <p className="text-xs md:text-sm font-semibold">
-                      {req.name}
+                      {req.otherUserName}
                     </p>
                     <p className="text-[10px] text-gray-400">{req.timeAgo}</p>
                   </div>

@@ -9,6 +9,10 @@ export const postApi = {
     return axiosClient.get(`/posts/${id}`);
   },
 
+  getByAuthor(userId) {
+    return axiosClient.get(`/posts/by-author/${userId}`);
+  },
+
   create(payload) {
     return axiosClient.post("/posts", payload);
   },
