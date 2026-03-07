@@ -16,11 +16,16 @@ async function createPost(payload) {
   }
 
   return postRepository.create({
+    authorId: payload.authorId ? String(payload.authorId) : null,
     authorName: payload.authorName,
     authorSubtitle: payload.authorSubtitle || "",
     text: payload.text,
     imageUrl: payload.imageUrl || null,
   });
+}
+
+async function getPostsByAuthor(userId) {
+  return postRepository.findByAuthor(userId);
 }
 
 async function addComment(postId, payload) {
@@ -53,6 +58,7 @@ module.exports = {
   getAllPosts,
   getPostById,
   createPost,
+  getPostsByAuthor,
   addComment,
   likePost,
   deletePost,

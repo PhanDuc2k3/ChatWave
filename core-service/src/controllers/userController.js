@@ -9,6 +9,16 @@ async function getAllUsers(req, res, next) {
   }
 }
 
+async function searchUsers(req, res, next) {
+  try {
+    const { q } = req.query;
+    const users = await userService.searchUsers(q);
+    res.json(users);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getUserById(req, res, next) {
   try {
     const user = await userService.getUserById(req.params.id);
@@ -60,5 +70,6 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  searchUsers,
 };
 

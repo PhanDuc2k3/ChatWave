@@ -9,6 +9,23 @@ async function findAll() {
   });
 }
 
+async function search(query) {
+  const q = String(query || "").trim();
+  if (!q) return [];
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(escaped, "i");
+  const users = await User.find({
+    $or: [{ username: regex }, { email: regex }],
+  })
+    .limit(20)
+    .lean();
+  return users.map((u) => {
+    const copy = { ...u };
+    delete copy.passwordHash;
+    return copy;
+  });
+}
+
 async function findById(id) {
   const user = await User.findById(id).lean();
   if (!user) return null;
@@ -52,5 +69,6 @@ module.exports = {
   create,
   update,
   remove,
+  search,
 };
 

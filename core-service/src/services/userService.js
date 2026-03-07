@@ -9,6 +9,10 @@ async function getUserById(id) {
   return userRepository.findById(id);
 }
 
+async function searchUsers(query) {
+  return userRepository.search(query);
+}
+
 async function createUser(payload) {
   const { error, value } = validateNewUser(payload);
   if (error) {
@@ -39,5 +43,6 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  searchUsers,
 };
 

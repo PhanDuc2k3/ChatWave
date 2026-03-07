@@ -67,12 +67,22 @@ async function deletePost(req, res, next) {
   }
 }
 
+async function getPostsByAuthor(req, res, next) {
+  try {
+    const posts = await postService.getPostsByAuthor(req.params.userId);
+    res.json(posts);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getAllPosts,
   getPostById,
   createPost,
   addComment,
   likePost,
+  getPostsByAuthor,
   deletePost,
 };
 

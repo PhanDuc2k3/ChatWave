@@ -6,6 +6,9 @@ const router = express.Router();
 // GET /api/v1/posts
 router.get("/", postController.getAllPosts);
 
+// GET /api/v1/posts/by-author/:userId
+router.get("/by-author/:userId", postController.getPostsByAuthor);
+
 // GET /api/v1/posts/:id
 router.get("/:id", postController.getPostById);
 

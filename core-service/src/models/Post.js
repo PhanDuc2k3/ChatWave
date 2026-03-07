@@ -11,6 +11,7 @@ const commentSchema = new mongoose.Schema(
 
 const postSchema = new mongoose.Schema(
   {
+    authorId: { type: String, default: null, index: true },
     authorName: { type: String, required: true },
     authorSubtitle: { type: String, default: "" },
     text: { type: String, required: true },

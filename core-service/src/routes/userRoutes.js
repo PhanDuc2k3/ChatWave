@@ -3,6 +3,9 @@ const userController = require("../controllers/userController");
 
 const router = express.Router();
 
+// GET /api/v1/users/search?q=...
+router.get("/search", userController.searchUsers);
+
 // GET /api/v1/users
 router.get("/", userController.getAllUsers);
 

@@ -15,6 +15,12 @@ async function create(data) {
   return post.toObject();
 }
 
+async function findByAuthor(userId) {
+  const uid = String(userId);
+  const posts = await Post.find({ authorId: uid }).sort({ createdAt: -1 });
+  return posts.map((p) => p.toObject());
+}
+
 async function addComment(postId, comment) {
   const post = await Post.findById(postId);
   if (!post) return null;
@@ -60,6 +66,7 @@ module.exports = {
   findAll,
   findById,
   create,
+  findByAuthor,
   addComment,
   toggleLike,
   remove,
