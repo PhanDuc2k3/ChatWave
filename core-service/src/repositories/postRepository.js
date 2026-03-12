@@ -1,7 +1,26 @@
 const Post = require("../models/Post");
 
+async function search(query) {
+  const q = String(query || "").trim();
+  if (!q) return [];
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(escaped, "i");
+  const posts = await Post.find({
+    $or: [{ text: regex }, { authorName: regex }],
+    groupId: null,
+  })
+    .sort({ createdAt: -1 })
+    .limit(20);
+  return posts.map((p) => p.toObject());
+}
+
 async function findAll() {
-  const posts = await Post.find().sort({ createdAt: -1 });
+  const posts = await Post.find({ groupId: null }).sort({ createdAt: -1 });
+  return posts.map((p) => p.toObject());
+}
+
+async function findByGroup(groupId) {
+  const posts = await Post.find({ groupId }).sort({ createdAt: -1 });
   return posts.map((p) => p.toObject());
 }
 
@@ -35,6 +54,11 @@ async function remove(id) {
   return !!res;
 }
 
+async function update(id, data) {
+  const post = await Post.findByIdAndUpdate(id, { $set: data }, { new: true });
+  return post ? post.toObject() : null;
+}
+
 async function incrementLike(postId, delta = 1) {
   const post = await Post.findById(postId);
   if (!post) return null;
@@ -63,12 +87,15 @@ async function toggleLike(postId, userId) {
 }
 
 module.exports = {
+  search,
   findAll,
+  findByGroup,
   findById,
   create,
   findByAuthor,
   addComment,
   toggleLike,
   remove,
+  update,
 };
 

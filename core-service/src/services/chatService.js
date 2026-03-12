@@ -15,8 +15,8 @@ async function sendMessage(conversationId, payload) {
     err.statusCode = 400;
     throw err;
   }
-  if (!payload.senderId || !payload.text) {
-    const err = new Error("senderId and text are required");
+  if (!payload.senderId || (!payload.text && !payload.imageUrl)) {
+    const err = new Error("senderId and (text or imageUrl) are required");
     err.statusCode = 400;
     throw err;
   }
@@ -26,7 +26,8 @@ async function sendMessage(conversationId, payload) {
     senderId: String(payload.senderId),
     senderName: payload.senderName || "User",
     conversationName: payload.conversationName || null,
-    text: payload.text,
+    text: payload.text || "",
+    imageUrl: payload.imageUrl || null,
   });
 
   return message;

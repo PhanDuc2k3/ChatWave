@@ -64,6 +64,26 @@ async function getSuggestions(req, res, next) {
   }
 }
 
+async function blockUser(req, res, next) {
+  try {
+    const { userId, targetId } = req.body || {};
+    await friendService.blockUser(userId, targetId);
+    res.json({ message: "Đã chặn người dùng" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function unblockUser(req, res, next) {
+  try {
+    const { userId, targetId } = req.body || {};
+    await friendService.unblockUser(userId, targetId);
+    res.json({ message: "Đã bỏ chặn người dùng" });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getFriends,
   getRequests,
@@ -71,5 +91,7 @@ module.exports = {
   respondRequest,
   removeFriend,
   getSuggestions,
+  blockUser,
+  unblockUser,
 };
 

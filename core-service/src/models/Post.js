@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const commentSchema = new mongoose.Schema(
   {
     author: { type: String, required: true },
+    authorAvatar: { type: String, default: null },
     text: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
   },
@@ -14,13 +15,14 @@ const postSchema = new mongoose.Schema(
     authorId: { type: String, default: null, index: true },
     authorName: { type: String, required: true },
     authorSubtitle: { type: String, default: "" },
-    text: { type: String, required: true },
+    text: { type: String, default: "" },
     imageUrl: { type: String, default: null },
     likes: { type: Number, default: 0 },
     comments: { type: Number, default: 0 },
     shares: { type: Number, default: 0 },
     likedBy: { type: [String], default: [] }, // user ids đã like
     commentList: { type: [commentSchema], default: [] },
+    groupId: { type: mongoose.Schema.Types.ObjectId, ref: "Group", default: null },
   },
   {
     timestamps: true,

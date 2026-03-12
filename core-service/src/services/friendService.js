@@ -13,6 +13,12 @@ async function sendRequest(fromUserId, toUserId) {
     err.statusCode = 400;
     throw err;
   }
+  const blocked = await friendRepository.findBlockedBetween(fromUserId, toUserId);
+  if (blocked) {
+    const err = new Error("Không thể gửi lời mời kết bạn");
+    err.statusCode = 403;
+    throw err;
+  }
   return friendRepository.createRequest(fromUserId, toUserId);
 }
 
@@ -103,6 +109,29 @@ async function getSuggestions(userId) {
   return friendRepository.getSuggestions(userId, 10);
 }
 
+async function blockUser(userId, targetId) {
+  if (!userId || !targetId) {
+    const err = new Error("userId và targetId là bắt buộc");
+    err.statusCode = 400;
+    throw err;
+  }
+  if (String(userId) === String(targetId)) {
+    const err = new Error("Không thể chặn chính mình");
+    err.statusCode = 400;
+    throw err;
+  }
+  return friendRepository.blockUser(userId, targetId);
+}
+
+async function unblockUser(userId, targetId) {
+  if (!userId || !targetId) {
+    const err = new Error("userId và targetId là bắt buộc");
+    err.statusCode = 400;
+    throw err;
+  }
+  return friendRepository.unblockUser(userId, targetId);
+}
+
 module.exports = {
   sendRequest,
   respondRequest,
@@ -110,5 +139,7 @@ module.exports = {
   getFriends,
   getRequests,
   getSuggestions,
+  blockUser,
+  unblockUser,
 };
 

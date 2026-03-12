@@ -9,8 +9,17 @@ router.post("/", groupController.createGroup);
 // GET /api/v1/groups?userId=...
 router.get("/", groupController.getMyGroups);
 
+// GET /api/v1/groups/discover?userId=...
+router.get("/discover", groupController.getDiscoverableGroups);
+
+// GET /api/v1/groups/search?q=...
+router.get("/search", groupController.searchGroups);
+
 // GET /api/v1/groups/:id
 router.get("/:id", groupController.getGroupById);
+
+// PATCH /api/v1/groups/:id/visibility
+router.patch("/:id/visibility", groupController.updateVisibility);
 
 // POST /api/v1/groups/:id/members
 router.post("/:id/members", groupController.addMember);

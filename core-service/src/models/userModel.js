@@ -30,17 +30,20 @@ function validateNewUser(payload = {}) {
 function validateUpdateUser(payload = {}) {
   const value = {};
 
-  if (payload.username) {
+  if (payload.username != null) {
     value.username = String(payload.username).trim();
   }
-  if (payload.email) {
+  if (payload.email != null) {
     value.email = String(payload.email).trim().toLowerCase();
   }
-  if (payload.password) {
-    value.password = String(payload.password);
+  if (payload.phone != null) {
+    value.phone = String(payload.phone) || null;
   }
-  if (payload.phone) {
-    value.phone = String(payload.phone);
+  if (payload.avatar != null) {
+    value.avatar = String(payload.avatar) || null;
+  }
+  if (payload.bio != null) {
+    value.bio = String(payload.bio).trim();
   }
 
   return { error: null, value };

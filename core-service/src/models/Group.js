@@ -36,6 +36,11 @@ const groupSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    visibility: {
+      type: String,
+      enum: ["public", "private"],
+      default: "public",
+    },
     members: {
       type: [memberSchema],
       default: [],

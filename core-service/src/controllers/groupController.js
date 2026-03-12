@@ -31,6 +31,34 @@ async function getMyGroups(req, res, next) {
   }
 }
 
+async function searchGroups(req, res, next) {
+  try {
+    const { q } = req.query;
+    const groups = await groupService.searchGroups(q);
+    const normalized = groups.map((g) => ({
+      ...g,
+      id: g._id?.toString() || g.id,
+    }));
+    res.json(normalized);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getDiscoverableGroups(req, res, next) {
+  try {
+    const { userId } = req.query;
+    const groups = await groupService.getDiscoverableGroups(userId);
+    const normalized = groups.map((g) => ({
+      ...g,
+      id: g._id?.toString() || g.id,
+    }));
+    res.json(normalized);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function addMember(req, res, next) {
   try {
     const group = await groupService.addMember(req.params.id, req.body);
@@ -74,12 +102,36 @@ async function removeMember(req, res, next) {
   }
 }
 
+async function updateVisibility(req, res, next) {
+  try {
+    const { visibility } = req.body || {};
+    const userId = req.body?.userId || req.query?.userId;
+    if (!visibility || !["public", "private"].includes(visibility)) {
+      return res.status(400).json({ message: "visibility phải là public hoặc private" });
+    }
+    const group = await groupService.updateVisibility(
+      req.params.id,
+      visibility,
+      userId
+    );
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+    res.json(group);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createGroup,
   getGroupById,
   getMyGroups,
+  searchGroups,
+  getDiscoverableGroups,
   addMember,
   updateMemberRole,
   removeMember,
+  updateVisibility,
 };
 

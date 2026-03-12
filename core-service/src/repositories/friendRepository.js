@@ -65,6 +65,7 @@ async function getFriendsForUser(userId) {
       id: u._id.toString(),
       username: u.username,
       email: u.email,
+      avatar: u.avatar || null,
     }));
 }
 
@@ -93,6 +94,37 @@ async function getRequestsForUser(userId) {
   }
 
   return { incoming, outgoing };
+}
+
+async function findBlockedBetween(userId1, userId2) {
+  const [userA, userB] = normalizePair(userId1, userId2);
+  return Friendship.findOne({ userA, userB, status: "blocked" }).lean();
+}
+
+async function blockUser(userId, targetId) {
+  const [userA, userB] = normalizePair(userId, targetId);
+  const existing = await Friendship.findOne({ userA, userB });
+  if (existing) {
+    await Friendship.findByIdAndUpdate(existing._id, {
+      $set: { status: "blocked", requesterId: String(userId) },
+    });
+  } else {
+    await Friendship.create({
+      userA,
+      userB,
+      requesterId: String(userId),
+      status: "blocked",
+    });
+  }
+  return true;
+}
+
+async function unblockUser(userId, targetId) {
+  const [userA, userB] = normalizePair(userId, targetId);
+  const existing = await Friendship.findOne({ userA, userB, status: "blocked" });
+  if (!existing || String(existing.requesterId) !== String(userId)) return false;
+  await Friendship.findByIdAndDelete(existing._id);
+  return true;
 }
 
 async function getSuggestions(userId, limit = 10) {
@@ -126,9 +158,12 @@ async function getSuggestions(userId, limit = 10) {
 module.exports = {
   normalizePair,
   findBetween,
+  findBlockedBetween,
   createRequest,
   updateStatus,
   remove,
+  blockUser,
+  unblockUser,
   getFriendsForUser,
   getRequestsForUser,
   getSuggestions,

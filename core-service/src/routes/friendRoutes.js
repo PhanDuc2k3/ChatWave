@@ -21,5 +21,11 @@ router.post("/requests/:id/respond", friendController.respondRequest);
 // DELETE /api/v1/friends
 router.delete("/", friendController.removeFriend);
 
+// POST /api/v1/friends/block
+router.post("/block", friendController.blockUser);
+
+// POST /api/v1/friends/unblock
+router.post("/unblock", friendController.unblockUser);
+
 module.exports = router;
 

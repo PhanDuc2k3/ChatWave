@@ -1,7 +1,19 @@
 const postService = require("../services/postService");
+const groupService = require("../services/groupService");
 
 async function getAllPosts(req, res, next) {
   try {
+    const { groupId, userId } = req.query;
+    if (groupId) {
+      const isMember = await groupService.isMember(groupId, userId);
+      if (!isMember) {
+        return res.status(403).json({
+          message: "Bạn cần tham gia nhóm để xem bài viết.",
+        });
+      }
+      const posts = await postService.getPostsByGroup(groupId);
+      return res.json(posts);
+    }
     const posts = await postService.getAllPosts();
     res.json(posts);
   } catch (err) {
@@ -23,6 +35,15 @@ async function getPostById(req, res, next) {
 
 async function createPost(req, res, next) {
   try {
+    const { groupId, authorId } = req.body || {};
+    if (groupId) {
+      const isMember = await groupService.isMember(groupId, authorId);
+      if (!isMember) {
+        return res.status(403).json({
+          message: "Bạn cần tham gia nhóm để đăng bài.",
+        });
+      }
+    }
     const post = await postService.createPost(req.body);
     res.status(201).json(post);
   } catch (err) {
@@ -55,6 +76,18 @@ async function likePost(req, res, next) {
   }
 }
 
+async function updatePost(req, res, next) {
+  try {
+    const post = await postService.updatePost(req.params.id, req.body);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    res.json(post);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function deletePost(req, res, next) {
   try {
     const deleted = await postService.deletePost(req.params.id);
@@ -76,13 +109,25 @@ async function getPostsByAuthor(req, res, next) {
   }
 }
 
+async function searchPosts(req, res, next) {
+  try {
+    const { q } = req.query;
+    const posts = await postService.searchPosts(q);
+    res.json(posts);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getAllPosts,
   getPostById,
   createPost,
+  updatePost,
   addComment,
   likePost,
   getPostsByAuthor,
+  searchPosts,
   deletePost,
 };
 
