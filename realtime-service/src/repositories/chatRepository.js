@@ -11,8 +11,24 @@ async function addMessage(data) {
   return msg.toObject();
 }
 
+async function updateMessage(messageId, updateData) {
+  const msg = await ChatMessage.findByIdAndUpdate(
+    messageId,
+    { $set: updateData },
+    { new: true }
+  ).lean();
+  return msg || null;
+}
+
+async function findById(messageId) {
+  const msg = await ChatMessage.findById(messageId).lean();
+  return msg || null;
+}
+
 module.exports = {
   getMessagesByConversation,
   addMessage,
+  updateMessage,
+  findById,
 };
 

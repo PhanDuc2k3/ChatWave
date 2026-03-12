@@ -23,9 +23,16 @@ const chatMessageSchema = new mongoose.Schema(
     },
     text: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
     },
+    imageUrl: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    isDeleted: { type: Boolean, default: false },
+    editedAt: { type: Date, default: null },
   },
   {
     timestamps: true,
