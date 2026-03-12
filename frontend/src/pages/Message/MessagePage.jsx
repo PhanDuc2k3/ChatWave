@@ -1,12 +1,17 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { ClipboardList } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { slides } from "./messageData";
 import MessageHeaderControls from "./MessageHeaderControls";
 import MessageListSidebar from "./MessageListSidebar";
 import MessageContent from "./MessageContent";
+import CreateTaskModal from "./CreateTaskModal";
 import MessageEmptyState from "./MessageEmptyState";
+import { getChatSocket } from "../../socket/chatSocket";
 import { messageApi } from "../../api/messageApi";
-import { groupApi } from "../../api/groupApi";
+import { chatGroupApi } from "../../api/chatGroupApi";
+import { taskApi } from "../../api/taskApi";
+import { friendApi } from "../../api/friendApi";
 import toast from "react-hot-toast";
 
 export default function MessagePage() {
@@ -17,11 +22,23 @@ export default function MessagePage() {
 
   const [friends, setFriends] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [unread] = useState([]);
+  const selectedChatRef = React.useRef(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDesc, setNewGroupDesc] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [invitedMembers, setInvitedMembers] = useState([]);
+  const [friendSuggestions, setFriendSuggestions] = useState([]);
+
+  const currentUserId = useMemo(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("chatwave_user") || "null");
+      return u?.id ?? u?._id ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     const storedUser =
@@ -31,7 +48,12 @@ export default function MessagePage() {
     const fetchConversations = async () => {
       try {
         const data = await messageApi.getConversations(currentUserId);
-        setFriends(data || []);
+        const mapped = (data || []).map((c) => ({
+          ...c,
+          id: c.id || c._id,
+          unreadCount: c.unreadCount ?? 0,
+        }));
+        setFriends(mapped);
       } catch (err) {
         toast.error(
           err?.message || "Không tải được danh sách cuộc trò chuyện."
@@ -42,20 +64,23 @@ export default function MessagePage() {
     const fetchGroups = async () => {
       if (!currentUserId) return;
       try {
-        const data = await groupApi.getMyGroups(currentUserId);
+        const data = await chatGroupApi.getMyGroups(currentUserId);
         const mapped = (data || []).map((g) => ({
-          id: g.id,
+          id: `group:${g.id || g._id}`,
+          chatGroupId: g.id || g._id,
           name: g.name,
-          message: g.lastMessage || "Nhóm mới",
+          message: "Nhóm chat",
           status: "Online",
           lastActive: g.updatedAt
             ? new Date(g.updatedAt).toLocaleDateString("vi-VN")
             : "",
           members: g.members?.length || 1,
+          isChatGroup: true,
+          unreadCount: 0,
         }));
         setGroups(mapped);
       } catch (err) {
-        toast.error(err?.message || "Không tải được danh sách nhóm.");
+        toast.error(err?.message || "Không tải được danh sách nhóm chat.");
       }
     };
 
@@ -63,7 +88,42 @@ export default function MessagePage() {
     fetchGroups();
   }, []);
 
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const socket = getChatSocket();
+    const handleNewMessage = (msg) => {
+      if (!msg || msg.senderId === String(currentUserId)) return;
+      const cid = String(msg.conversationId);
+      if (selectedChatRef.current && String(selectedChatRef.current.id) === cid) return;
+      const incUnread = (setter) => {
+        setter((prev) =>
+          prev.map((item) => {
+            if (String(item.id) !== cid) return item;
+            return { ...item, unreadCount: (item.unreadCount || 0) + 1 };
+          })
+        );
+      };
+      incUnread(setGroups);
+      incUnread(setFriends);
+    };
+    socket.on("new_message", handleNewMessage);
+    return () => socket.off("new_message", handleNewMessage);
+  }, [currentUserId]);
+
   const hasConversations = friends.length + groups.length > 0;
+
+  const unread = useMemo(() => {
+    const all = [...friends, ...groups].filter((i) => (i.unreadCount || 0) > 0);
+    return all.sort((a, b) => {
+      const da = a.lastActive || "";
+      const db = b.lastActive || "";
+      return db.localeCompare(da);
+    });
+  }, [friends, groups]);
 
   const listItems = useMemo(() => {
     if (activeTab === "overview") return [...friends, ...groups];
@@ -75,8 +135,11 @@ export default function MessagePage() {
 
   const showMembers =
     activeTab === "overview" || activeTab === "groups";
-  const showUnreadBadge = activeTab === "unread";
 
+  const handleCreateTaskFromMessage = (taskData) => {
+    setShowCreateTask(false);
+    toast.success("Đã giao việc thành công.");
+  };
   const handleConversationUpdate = (conversationId, lastText, lastTime) => {
     const updater = (items) =>
       items.map((item) =>
@@ -87,7 +150,6 @@ export default function MessagePage() {
 
     setFriends((prev) => updater(prev));
     setGroups((prev) => updater(prev));
-    setUnread((prev) => updater(prev));
 
     setSelectedChat((prev) =>
       prev && (prev.id === Number(conversationId) || String(prev.id) === String(conversationId))
@@ -114,9 +176,9 @@ export default function MessagePage() {
     <MainLayout headerContent={headerContent}>
       <div className="w-full h-full">
         {hasConversations ? (
-          <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[400px]">
+          <div className="flex gap-4 h-full min-h-[400px]">
             {/* Trái: danh sách người nhắn (30%) */}
-            <aside className="w-[30%] min-w-[200px] shrink-0 bg-white rounded-2xl border border-gray-200 p-3 overflow-hidden flex flex-col">
+            <aside className="w-[30%] min-w-[220px] shrink-0 bg-white rounded-2xl border border-[#F5D9A6] p-3 overflow-hidden flex flex-col shadow-sm">
               <div className="mb-3 shrink-0 flex items-center justify-between gap-2">
                 <div>
                   <h3 className="text-sm font-semibold text-gray-800">
@@ -129,7 +191,7 @@ export default function MessagePage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateGroup(true)}
-                  className="text-[11px] px-2 py-1 rounded-full bg-[#F9C96D] text-gray-800 hover:bg-[#F7B944] transition"
+                  className="text-[11px] px-3 py-1 rounded-full bg-[#F97316] text-white hover:bg-[#EA580C] transition"
                 >
                   + Tạo nhóm
                 </button>
@@ -139,18 +201,42 @@ export default function MessagePage() {
                   items={listItems}
                   sortOption={sortOption}
                   selectedId={selectedChat?.id}
-                  onSelect={setSelectedChat}
+                  onSelect={(chat) => {
+                    setSelectedChat(chat);
+                    if (chat) {
+                      const cid = String(chat.id);
+                      const markRead = (setter) =>
+                        setter((prev) =>
+                          prev.map((item) =>
+                            String(item.id) === cid ? { ...item, unreadCount: 0 } : item
+                          )
+                        );
+                      markRead(setFriends);
+                      markRead(setGroups);
+                    }
+                  }}
                   showMembers={showMembers}
-                  showUnreadBadge={showUnreadBadge}
                 />
               </div>
             </aside>
 
             {/* Phải: nội dung tin nhắn (70%) */}
-            <section className="flex-1 min-w-0">
+            <section className="flex-1 min-w-0 h-full">
               <MessageContent
                 selected={selectedChat}
                 onConversationUpdate={handleConversationUpdate}
+                onOpenCreateTask={() => setShowCreateTask(true)}
+                onLeaveGroup={async (group) => {
+                  try {
+                    const gid = group.chatGroupId || String(group.id).replace("group:", "");
+                    await chatGroupApi.leaveGroup(gid, currentUserId);
+                    setGroups((prev) => prev.filter((g) => g.chatGroupId !== gid && g.id !== group.id));
+                    setSelectedChat(null);
+                    toast.success("Đã rời nhóm.");
+                  } catch (err) {
+                    toast.error(err?.message || "Không rời nhóm được.");
+                  }
+                }}
               />
             </section>
           </div>
@@ -165,10 +251,10 @@ export default function MessagePage() {
 
       {showCreateGroup && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-3">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl p-5 space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-gray-800">
-                Tạo nhóm chat mới
+                Tạo nhóm chat (tin nhắn)
               </h3>
               <button
                 type="button"
@@ -203,6 +289,58 @@ export default function MessagePage() {
                   value={newGroupDesc}
                   onChange={(e) => setNewGroupDesc(e.target.value)}
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Mời thành viên (tuỳ chọn)
+                </label>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!currentUserId) return;
+                    try {
+                      const friends = await friendApi.getFriends(currentUserId);
+                      setFriendSuggestions(friends || []);
+                    } catch {
+                      setFriendSuggestions([]);
+                    }
+                  }}
+                  className="text-xs text-[#FA8DAE] hover:underline"
+                >
+                  + Chọn từ danh sách bạn bè
+                </button>
+                {friendSuggestions.length > 0 && (
+                  <div className="mt-2 max-h-32 overflow-y-auto space-y-1 border rounded-lg p-2">
+                    {friendSuggestions
+                      .filter((f) => !invitedMembers.some((m) => m.id === f.id))
+                      .map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setInvitedMembers((prev) => [...prev, { id: f.id, username: f.username || f.email }])}
+                          className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-100"
+                        >
+                          + {f.username || f.email}
+                        </button>
+                      ))}
+                  </div>
+                )}
+                {invitedMembers.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {invitedMembers.map((m) => (
+                      <span
+                        key={m.id}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FA8DAE]/20 text-xs"
+                      >
+                        {m.username}
+                        <button type="button" onClick={() => setInvitedMembers((prev) => prev.filter((x) => x.id !== m.id))} className="text-gray-500 hover:text-red-600">
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -239,21 +377,25 @@ export default function MessagePage() {
                   }
                   try {
                     setCreatingGroup(true);
-                    const group = await groupApi.create({
+                    const group = await chatGroupApi.create({
                       name,
                       description: newGroupDesc.trim(),
                       ownerId,
                       ownerName,
+                      members: invitedMembers?.length ? invitedMembers.map((m) => ({ userId: m.id, displayName: m.username || m.name || "User" })) : undefined,
                     });
+                    const gid = group.id || group._id;
                     const mapped = {
-                      id: group.id,
+                      id: `group:${gid}`,
+                      chatGroupId: gid,
                       name: group.name,
-                      message: newGroupDesc.trim() || "Nhóm mới",
+                      message: "Nhóm chat",
                       status: "Online",
                       lastActive: new Date(group.createdAt).toLocaleDateString(
                         "vi-VN"
                       ),
                       members: group.members?.length || 1,
+                      isChatGroup: true,
                     };
                     setGroups((prev) => [mapped, ...prev]);
                     toast.success("Tạo nhóm thành công.");
@@ -261,6 +403,8 @@ export default function MessagePage() {
                     setShowCreateGroup(false);
                     setNewGroupName("");
                     setNewGroupDesc("");
+                    setInvitedMembers([]);
+                    setFriendSuggestions([]);
                   } catch (err) {
                     toast.error(
                       err?.message || "Không tạo được nhóm, vui lòng thử lại."
@@ -276,6 +420,15 @@ export default function MessagePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showCreateTask && selectedChat && (
+        <CreateTaskModal
+          selectedChat={selectedChat}
+          currentUserId={currentUserId}
+          onClose={() => setShowCreateTask(false)}
+          onSuccess={handleCreateTaskFromMessage}
+        />
       )}
     </MainLayout>
   );

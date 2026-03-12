@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ClipboardList,
   Users,
@@ -9,7 +9,7 @@ import {
   Loader2,
 } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
-import { mockAssignedTasks } from "./tasksData";
+import { taskApi } from "../../api/taskApi";
 import TaskDetail from "./TaskDetail";
 
 const STATUS_LABELS = {
@@ -38,6 +38,11 @@ const PRIORITY_STYLES = {
 
 function TaskCard({ task, onClick, isSelected }) {
   const StatusIcon = STATUS_ICONS[task.status];
+  const isGroup = task.source === "group";
+  const identityName = isGroup
+    ? task.sourceName || "Nhóm chat"
+    : task.assignee || "Người nhận";
+  const identityInitial = identityName.charAt(0).toUpperCase();
 
   return (
     <button
@@ -54,22 +59,49 @@ function TaskCard({ task, onClick, isSelected }) {
           <ClipboardList className="w-5 h-5 text-[#FA8DAE]" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900">{task.title}</p>
-          <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-            <span>{task.assigner}</span>
-            <span>·</span>
-            <span
-              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border ${
-                task.source === "group" ? "bg-[#6CB8FF]/10 text-[#6CB8FF]" : "bg-[#F9C96D]/20 text-[#B8860B]"
+          <div className="flex items-center gap-2 mb-1">
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0 ${
+                isGroup
+                  ? "bg-[#DBEAFE] text-[#1D4ED8]"
+                  : "bg-[#FCE7F3] text-[#BE185D]"
               }`}
             >
-              {task.source === "group" ? (
-                <Users className="w-3.5 h-3.5" />
-              ) : (
-                <User className="w-3.5 h-3.5" />
-              )}
-              {task.sourceName}
+              {identityInitial}
+            </div>
+            <span className="text-xs text-gray-600 truncate max-w-[120px]">
+              {identityName}
             </span>
+          </div>
+          <p className="text-sm font-semibold text-gray-900 truncate">
+            {task.title}
+          </p>
+          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+            {/* Avt + tên người giao */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="w-5 h-5 rounded-full bg-[#E0F2FE] text-[#0369A1] flex items-center justify-center text-[10px] font-semibold shrink-0">
+                {(task.assigner || "U").charAt(0).toUpperCase()}
+              </div>
+              <span className="truncate max-w-[90px]">{task.assigner}</span>
+            </div>
+
+            <span>·</span>
+
+            {/* Avt + tên người nhận hoặc nhóm */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 ${
+                  isGroup
+                    ? "bg-[#DBEAFE] text-[#1D4ED8]"
+                    : "bg-[#FCE7F3] text-[#BE185D]"
+                }`}
+              >
+                {identityInitial}
+              </div>
+              <span className="truncate max-w-[90px]">
+                {identityName}
+              </span>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <span
@@ -98,20 +130,112 @@ function TaskCard({ task, onClick, isSelected }) {
   );
 }
 
+function mapTaskFromApi(t) {
+  return {
+    id: t.id || t._id,
+    title: t.title,
+    assigner: t.assignerName,
+    assignerId: t.assignerId,
+    assigneeId: t.assigneeId,
+    assignee: t.assigneeName || "Chưa giao",
+    reviewer: t.reviewerName || null,
+    source: t.source || "friend",
+    sourceName: t.sourceName,
+    dueDate: t.dueDate || "—",
+    status: t.status || "pending",
+    priority: t.priority || "medium",
+    description: t.description
+      ? { what: t.description }
+      : null,
+    expectedResults: t.expectedResults || [],
+    estimatedEffort: t.estimatedEffort || null,
+    acceptanceCriteria: t.acceptanceCriteria || [],
+    deliverables: t.deliverables || [],
+    references: t.references || [],
+    risksNotes: t.risksNotes || null,
+    completionNote: t.completionNote || null,
+    completedAt: t.completedAt || null,
+    submissionDeliverables: t.submissionDeliverables || [],
+    ...t,
+  };
+}
+
 export default function TasksPage() {
-  const [filter, setFilter] = useState("all"); // all | group | friend
-  const [tasks, setTasks] = useState(() => [...mockAssignedTasks]);
+  const [filter, setFilter] = useState("all"); // all | mine | group | friend
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+
+  const currentUserId = React.useMemo(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("chatwave_user") || "null");
+      return u?.id || u?._id;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        setLoading(true);
+        const data = filter === "mine" && currentUserId
+          ? await taskApi.getByAssignee(currentUserId)
+          : await taskApi.getAll();
+        const mapped = (data || []).map(mapTaskFromApi);
+        setTasks(mapped);
+      } catch {
+        setTasks([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [filter, currentUserId]);
 
   const selectedTask = selectedTaskId != null ? tasks.find((t) => t.id === selectedTaskId) : null;
 
-  const handleUpdateTaskStatus = (taskId, status) => {
+  const handleUpdateTaskStatus = async (taskId, status) => {
+    try {
+      const updated = await taskApi.updateStatus(taskId, status);
+      if (updated) {
+        const mapped = mapTaskFromApi(updated);
+        setTasks((prev) =>
+          prev.map((t) => (t.id === taskId || t.id === mapped.id ? { ...t, ...mapped } : t))
+        );
+      }
+    } catch {
+      // keep local update as fallback
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status } : t))
+      );
+    }
+  };
+
+  const handleTaskDeleted = (taskId) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setSelectedTaskId(null);
+  };
+
+  const handleTaskUpdated = (updatedTaskFromApi) => {
+    if (!updatedTaskFromApi) return;
+    const mapped = mapTaskFromApi(updatedTaskFromApi);
+    const id = mapped.id || updatedTaskFromApi._id || updatedTaskFromApi.id;
+    setTasks((prev) => prev.map((t) => (t.id === id ? mapped : t)));
+    setSelectedTaskId(id);
+  };
+
+  const handleTaskSubmitted = (updatedTaskFromApi) => {
+    if (!updatedTaskFromApi) return;
+    const mapped = mapTaskFromApi(updatedTaskFromApi);
+    const id = mapped.id || updatedTaskFromApi._id || updatedTaskFromApi.id;
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status } : t))
+      prev.map((t) => (t.id === id ? mapped : t))
     );
   };
 
   const tasksFiltered = tasks.filter((t) => {
+    if (filter === "mine") return true;
     if (filter === "all") return true;
     if (filter === "group") return t.source === "group";
     if (filter === "friend") return t.source === "friend";
@@ -140,9 +264,9 @@ export default function TasksPage() {
 
   return (
     <MainLayout headerContent={headerContent}>
-      <div className="w-full flex gap-4 h-[calc(100vh-220px)] min-h-[400px]">
+      <div className="w-full h-full bg-[#F3F6FB] flex gap-4 px-3 md:px-6 py-4">
         {/* Trái: danh sách task */}
-        <aside className="w-full md:w-[380px] shrink-0 flex flex-col gap-3 overflow-hidden">
+        <aside className="w-full md:w-[340px] lg:w-[360px] shrink-0 flex flex-col gap-3 overflow-hidden">
           <div className="shrink-0 grid grid-cols-2 gap-2">
             <div className="bg-white rounded-xl border border-gray-200 p-2 shadow-sm">
               <p className="text-xl font-bold text-[#FA8DAE]">{stats.total}</p>
@@ -157,6 +281,7 @@ export default function TasksPage() {
           <div className="shrink-0 flex gap-2">
             {[
               { key: "all", label: "Tất cả", icon: ClipboardList },
+              { key: "mine", label: "Của tôi", icon: User },
               { key: "group", label: "Nhóm", icon: Users },
               { key: "friend", label: "Bạn bè", icon: User },
             ].map(({ key, label, icon: Icon }) => (
@@ -179,12 +304,15 @@ export default function TasksPage() {
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <h3 className="text-xs font-semibold text-gray-600 shrink-0 mb-1">
               {filter === "all" && "Tất cả công việc"}
-              {filter === "group" && "Từ nhóm"}
+              {filter === "mine" && "Công việc được giao cho tôi"}
+              {filter === "group" && "Từ nhóm chat"}
               {filter === "friend" && "Từ bạn bè"}
               <span className="text-gray-400 font-normal ml-1">({tasksFiltered.length})</span>
             </h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {tasksFiltered.length > 0 ? (
+              {loading ? (
+                <p className="text-center text-gray-500 text-xs py-4">Đang tải...</p>
+              ) : tasksFiltered.length > 0 ? (
                 tasksFiltered.map((task) => (
                   <TaskCard
                     key={task.id}
@@ -203,25 +331,80 @@ export default function TasksPage() {
           </div>
         </aside>
 
-        {/* Phải: chi tiết task hoặc empty state */}
+        {/* Phải: board 3 cột theo trạng thái giống kanban */}
         <section className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          {selectedTask ? (
-            <TaskDetail
-              task={selectedTask}
-              onUpdateStatus={handleUpdateTaskStatus}
-              onClose={() => setSelectedTaskId(null)}
-              inline
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center bg-white rounded-2xl border border-gray-200">
-              <div className="text-center text-gray-400">
-                <ClipboardList className="w-16 h-16 mx-auto mb-3 opacity-50" />
-                <p className="text-sm font-medium">Chọn một task để xem chi tiết</p>
-                <p className="text-xs mt-1">Bấm vào task ở danh sách bên trái</p>
+          <div className="h-full bg-[#F3F6FB] rounded-2xl border border-gray-200 px-4 py-3 flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-800">
+                Board công việc
+              </h3>
+              <span className="text-xs text-gray-500">
+                {tasksFiltered.length} task
+              </span>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-auto">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { key: "pending", title: "To Do" },
+                  { key: "in_progress", title: "In Progress" },
+                  { key: "done", title: "Done" },
+                ].map(({ key, title }) => {
+                  const columnTasks = tasksFiltered.filter(
+                    (t) => t.status === key
+                  );
+                  return (
+                    <div key={key} className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                          {title}{" "}
+                          <span className="text-gray-400">
+                            ({columnTasks.length})
+                          </span>
+                        </h4>
+                        <button
+                          type="button"
+                          className="text-xs text-gray-400 hover:text-gray-600"
+                          title="Tuỳ chọn"
+                        >
+                          ⋯
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {columnTasks.map((task) => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            onClick={(t) => setSelectedTaskId(t.id)}
+                            isSelected={task.id === selectedTaskId}
+                          />
+                        ))}
+                        {columnTasks.length === 0 && (
+                          <div className="rounded-xl border border-dashed border-gray-200 bg-white/60 px-3 py-4 text-center text-[11px] text-gray-400">
+                            Chưa có task
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          )}
+          </div>
         </section>
+
+        {/* Panel chi tiết task dạng slide-over */}
+        {selectedTask && (
+          <TaskDetail
+            task={selectedTask}
+            onUpdateStatus={handleUpdateTaskStatus}
+            onTaskSubmitted={handleTaskSubmitted}
+            onTaskUpdated={handleTaskUpdated}
+            onTaskDeleted={handleTaskDeleted}
+            onClose={() => setSelectedTaskId(null)}
+          />
+        )}
       </div>
     </MainLayout>
   );

@@ -1,17 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, UserPlus, Gift, List, Search } from "lucide-react";
+import { Users, UserPlus, Gift, List } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { friendApi } from "../../api/friendApi";
-import { userApi } from "../../api/userApi";
 import toast from "react-hot-toast";
 
 export default function FriendsPage() {
   const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
-  const [searchText, setSearchText] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
 
   useEffect(() => {
     const storedUser =
@@ -125,9 +122,9 @@ export default function FriendsPage() {
 
   return (
     <MainLayout headerContent={headerContent}>
-      <div className="w-full flex gap-4">
+      <div className="w-full h-full bg-[#F3F6FB] flex gap-4 px-3 md:px-6 py-4">
         {/* Friends section sidebar */}
-        <aside className="hidden md:flex w-56 flex-col bg-white rounded-2xl border border-gray-200 py-3">
+        <aside className="hidden md:flex w-56 flex-col bg-white rounded-2xl border border-gray-200 py-3 shadow-sm">
           <h3 className="px-4 mb-2 text-sm font-semibold text-gray-800">
             Bạn bè
           </h3>
@@ -172,8 +169,12 @@ export default function FriendsPage() {
           </nav>
         </aside>
 
-        {/* Main content: grid of friend requests + suggestions */}
-        <section className="flex-1">
+        {/* Main content: giống layout task: khối trắng có padding */}
+        <section className="flex-1 min-w-0 flex flex-col">
+          <div className="h-full bg-[#F3F6FB] rounded-2xl border border-gray-200 px-4 py-3 flex flex-col gap-4">
+
+          {/* Lời mời kết bạn - 50% trên */}
+          <div className="flex-1 min-h-0 flex flex-col">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-sm md:text-base font-semibold text-gray-800">
@@ -192,16 +193,18 @@ export default function FriendsPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 overflow-y-auto pr-1">
             {requests.map((req) => renderRequestCard(req))}
             {requests.length === 0 && (
               <p className="text-[11px] md:text-xs text-gray-500 col-span-2 md:col-span-3 lg:col-span-4">
-                Hiện chưa có lời mời kết bạn nào.
+                Hiện tại bạn không có lời mời kết bạn nào cần xử lý.
               </p>
             )}
           </div>
+          </div>
 
-          <div className="mt-4">
+          {/* Gợi ý kết bạn - 50% dưới */}
+          <div className="flex-1 min-h-0 flex flex-col">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-sm md:text-base font-semibold text-gray-800">
@@ -213,7 +216,7 @@ export default function FriendsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 overflow-y-auto pr-1">
               {suggestions.map((sug) => {
                 const initial =
                   sug.username?.charAt(0) ||
@@ -281,131 +284,11 @@ export default function FriendsPage() {
 
               {suggestions.length === 0 && (
                 <p className="text-[11px] md:text-xs text-gray-500 col-span-2 md:col-span-3 lg:col-span-4">
-                  Tạm thời không có gợi ý nào. Hãy kết bạn thêm để có nhiều gợi
-                  ý hơn.
+                  Tạm thời không có gợi ý nào. Hãy kết bạn thêm để có nhiều gợi ý hơn.
                 </p>
               )}
             </div>
-
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="text-sm md:text-base font-semibold text-gray-800">
-                    Tìm kiếm người dùng
-                  </h3>
-                  <p className="text-[11px] md:text-xs text-gray-500">
-                    Tìm theo tên hoặc email
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex-1 flex items-center bg-white rounded-full border border-gray-300 px-3 py-1.5">
-                  <Search className="w-4 h-4 text-gray-400 mr-1" />
-                  <input
-                    type="text"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    placeholder="Nhập tên hoặc email người dùng..."
-                    className="flex-1 bg-transparent outline-none text-xs md:text-sm"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const q = searchText.trim();
-                    if (!q) {
-                      setSearchResults([]);
-                      return;
-                    }
-                    try {
-                      const res = await userApi.search(q);
-                      setSearchResults(res || []);
-                    } catch (err) {
-                      toast.error(
-                        err?.message ||
-                          "Không tìm được người dùng phù hợp."
-                      );
-                    }
-                  }}
-                  className="px-3 py-1.5 rounded-full bg-[#FA8DAE] text-white text-xs md:text-sm font-semibold hover:opacity-90 transition"
-                >
-                  Tìm
-                </button>
-              </div>
-
-              {searchResults.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-                  {searchResults.map((user) => {
-                    const name = user.username || user.email || "User";
-                    const initial = name.charAt(0);
-                    return (
-                      <div
-                        key={user.id}
-                        className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col"
-                      >
-                        <div className="h-24 md:h-28 bg-[#FFF7F0] flex items-center justify-center text-2xl font-semibold text-[#FA8DAE]">
-                          {initial}
-                        </div>
-                        <div className="p-3 md:p-4 flex-1 flex flex-col gap-2">
-                          <p className="text-sm md:text-base font-semibold text-gray-900">
-                            {name}
-                          </p>
-                          <p className="text-[11px] md:text-xs text-gray-500 break-all">
-                            {user.email}
-                          </p>
-                          <div className="mt-auto flex flex-col gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/profile/${user.id}`)}
-                              className="w-full rounded-full bg-gray-100 text-gray-800 text-xs md:text-sm font-semibold py-1.5 hover:bg-gray-200 transition"
-                            >
-                              Xem trang cá nhân
-                            </button>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                try {
-                                  const storedUser =
-                                    JSON.parse(
-                                      localStorage.getItem(
-                                        "chatwave_user"
-                                      ) || "null"
-                                    ) || null;
-                                  const currentUserId =
-                                    storedUser?.id || storedUser?._id || null;
-                                  if (!currentUserId) {
-                                    toast.error(
-                                      "Bạn cần đăng nhập để gửi lời mời kết bạn."
-                                    );
-                                    return;
-                                  }
-                                  await friendApi.sendRequest(
-                                    user.id,
-                                    currentUserId
-                                  );
-                                  toast.success(
-                                    "Đã gửi lời mời kết bạn."
-                                  );
-                                } catch (err) {
-                                  toast.error(
-                                    err?.message ||
-                                      "Không gửi được lời mời kết bạn."
-                                  );
-                                }
-                              }}
-                              className="w-full rounded-full bg-[#F9C96D] text-gray-800 text-xs md:text-sm font-semibold py-1.5 hover:bg-[#F7B944] transition"
-                            >
-                              Kết bạn
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+          </div>
           </div>
         </section>
       </div>

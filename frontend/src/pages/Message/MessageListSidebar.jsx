@@ -2,8 +2,10 @@ import React from "react";
 
 function sortItems(items, sortOption) {
   const cloned = [...items];
-  if (sortOption === "latest") return cloned.sort((a, b) => b.id - a.id);
-  if (sortOption === "oldest") return cloned.sort((a, b) => a.id - b.id);
+  // Giữ nguyên thứ tự từ server: đã được sắp xếp "mới nhất" ở backend
+  if (sortOption === "latest") return cloned;
+  // Cũ nhất: đảo ngược danh sách hiện tại
+  if (sortOption === "oldest") return cloned.reverse();
   if (sortOption === "mostMessages")
     return cloned.sort(
       (a, b) => (b.messageCount || 0) - (a.messageCount || 0)
@@ -17,7 +19,6 @@ export default function MessageListSidebar({
   selectedId,
   onSelect,
   showMembers,
-  showUnreadBadge,
 }) {
   const sorted = sortItems(items, sortOption);
 
@@ -34,8 +35,10 @@ export default function MessageListSidebar({
             key={item.id}
             type="button"
             onClick={() => onSelect(item)}
-            className={`w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
-              isActive ? "bg-[#FFF7F0]" : "hover:bg-gray-50"
+            className={`w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left transition border ${
+              isActive
+                ? "bg-[#FFF7F0] border-[#FDBA74]"
+                : "bg-white border-transparent hover:bg-[#FFF7F0] hover:border-[#FED7AA]"
             }`}
           >
             <div className="relative shrink-0">
@@ -59,9 +62,9 @@ export default function MessageListSidebar({
                     {item.members} tv
                   </span>
                 )}
-                {showUnreadBadge && item.unreadCount > 0 && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FF6B8A]/10 text-[#FF6B8A] shrink-0">
-                    {item.unreadCount}
+                {(item.unreadCount || 0) > 0 && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FF6B8A]/20 text-[#FF6B8A] font-medium shrink-0">
+                    {item.unreadCount > 99 ? "99+" : item.unreadCount}
                   </span>
                 )}
               </div>

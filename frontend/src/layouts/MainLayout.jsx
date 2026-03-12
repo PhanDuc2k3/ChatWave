@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Search } from "lucide-react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 
@@ -10,9 +11,26 @@ export default function MainLayout({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+  const currentUser = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("chatwave_user") || "null");
+    } catch {
+      return null;
+    }
+  }, []);
+  const isGuest = !currentUser;
+
+  const handleSearchSubmit = (e) => {
+    e?.preventDefault?.();
+    const q = (searchQuery || "").trim();
+    if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
+  };
 
   const activeNav = React.useMemo(() => {
+    if (location.pathname.startsWith("/search")) return "search";
     if (location.pathname.startsWith("/friends")) return "friends";
+    if (location.pathname.startsWith("/groups")) return "groups";
     if (location.pathname.startsWith("/message")) return "chat";
     if (location.pathname.startsWith("/tasks")) return "tasks";
     if (location.pathname.startsWith("/meeting")) return "meeting";
@@ -20,6 +38,10 @@ export default function MainLayout({
   }, [location.pathname]);
 
   const handleSetActiveNav = (target) => {
+    if (isGuest && target !== "home" && target !== "search") {
+      navigate("/login");
+      return;
+    }
     switch (target) {
       case "home":
         navigate("/");
@@ -29,6 +51,12 @@ export default function MainLayout({
         break;
       case "friends":
         navigate("/friends");
+        break;
+      case "search":
+        navigate("/search");
+        break;
+      case "groups":
+        navigate("/groups");
         break;
       case "tasks":
         navigate("/tasks");
@@ -54,32 +82,8 @@ export default function MainLayout({
 
       {/* MAIN CONTENT - đẩy xuống dưới header, sang phải sidebar */}
       <div className="pt-16 md:pt-20 sm:pl-16 lg:pl-20 h-screen overflow-hidden flex flex-col">
-        {/* SUB HEADER WITH SEARCH + PAGE FILTERS - cố định cùng header/sidebar */}
-        <div className="shrink-0 bg-white border-b border-[#F5D9A6] px-4 md:px-8 py-3 flex flex-col gap-3">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              {showSearch && (
-                <div className="flex items-center bg-white shadow-sm rounded-full px-4 py-2 w-full md:max-w-md">
-                  <i className="fas fa-search text-gray-400 mr-2" />
-                  <input
-                    type="text"
-                    placeholder="Tìm kiếm"
-                    className="flex-1 bg-transparent outline-none text-sm md:text-base"
-                  />
-                </div>
-              )}
-
-              {/* Custom header content from each page (ví dụ: Bạn bè/Nhóm/Chưa đọc + Sắp xếp) */}
-              {headerContent && (
-                <div className="flex-1 flex items-center justify-between gap-4">
-                  {headerContent}
-                </div>
-              )}
-
-            </div>
-        </div>
-
         {/* MAIN CONTENT - chỉ phần này cuộn */}
-        <main className="flex-1 min-h-0 bg-white relative px-4 overflow-auto">
+        <main className="flex-1 min-h-0 bg-white relative px-0 overflow-auto">
             {children}
 
             {/* Floating bot avatar bottom-right, overlapping content */}

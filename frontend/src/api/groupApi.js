@@ -9,8 +9,23 @@ export const groupApi = {
     return axiosClient.get("/groups", { params: { userId } });
   },
 
+  getDiscoverable(userId) {
+    return axiosClient.get("/groups/discover", { params: { userId } });
+  },
+
+  search(query) {
+    return axiosClient.get("/groups/search", { params: { q: query } });
+  },
+
   getById(id) {
     return axiosClient.get(`/groups/${id}`);
+  },
+
+  updateVisibility(groupId, visibility, userId) {
+    return axiosClient.patch(`/groups/${groupId}/visibility`, {
+      visibility,
+      userId,
+    });
   },
 
   addMember(groupId, payload) {

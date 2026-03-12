@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import toast from "react-hot-toast";
+import { uploadApi } from "../../api/uploadApi";
+import { taskApi } from "../../api/taskApi";
 import {
   X,
   ClipboardList,
@@ -14,6 +17,8 @@ import {
   Target,
   Calendar,
   Zap,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 const STATUS_LABELS = {
@@ -62,34 +67,80 @@ function EmptyNote() {
   return <span className="text-gray-400 italic">Chưa có thông tin</span>;
 }
 
-export default function TaskDetail({ task, onUpdateStatus, onClose, inline = false }) {
+export default function TaskDetail({ task, onUpdateStatus, onClose, onTaskSubmitted, onTaskUpdated, onTaskDeleted, inline = false }) {
   if (!task) return null;
 
   const StatusIcon = STATUS_ICONS[task.status];
   const [submissionFiles, setSubmissionFiles] = useState([]);
   const [completionComment, setCompletionComment] = useState("");
-  const [submittedInfo, setSubmittedInfo] = useState(null);
+  const [submittedInfo, setSubmittedInfo] = useState(() => {
+    if (task.completedAt || task.completionNote || (task.submissionDeliverables && task.submissionDeliverables.length > 0)) {
+      return {
+        timeLabel: task.completedAt ? new Date(task.completedAt).toLocaleString() : null,
+        filesCount: task.submissionDeliverables?.length || 0,
+        comment: task.completionNote || null,
+      };
+    }
+    return null;
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editPayload, setEditPayload] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const storedUser = JSON.parse(localStorage.getItem("chatwave_user") || "null") || null;
+  const currentUserId = storedUser?.id || storedUser?._id;
+  const isAssigner = String(task.assignerId) === String(currentUserId);
 
   const handleFilesChange = (event) => {
     const files = Array.from(event.target.files || []);
     setSubmissionFiles(files);
   };
 
-  const handleSubmitCompletion = () => {
+  const handleSubmitCompletion = async () => {
     const hasContent =
       submissionFiles.length > 0 || completionComment.trim().length > 0;
     if (!hasContent) return;
 
-    if (onUpdateStatus && task.status !== "done") {
-      onUpdateStatus(task.id, "done");
-    }
+    setSubmitting(true);
+    try {
+      const submissionDeliverables = [];
+      for (let i = 0; i < submissionFiles.length; i++) {
+        const file = submissionFiles[i];
+        if (!file.type.startsWith("image/")) {
+          toast.error(`File "${file.name}" không phải ảnh. Chỉ hỗ trợ ảnh (jpg, png, gif, webp).`);
+          setSubmitting(false);
+          return;
+        }
+        const data = await uploadApi.uploadImage(file);
+        if (data?.url) {
+          submissionDeliverables.push({ label: file.name, link: data.url });
+        }
+      }
 
-    const timeLabel = new Date().toLocaleString();
-    setSubmittedInfo({
-      timeLabel,
-      filesCount: submissionFiles.length,
-      comment: completionComment.trim() || null,
-    });
+      const updated = await taskApi.submitTask(task.id, {
+        completionNote: completionComment.trim() || "",
+        submissionDeliverables,
+      });
+
+      if (onUpdateStatus && task.status !== "done") {
+        onUpdateStatus(task.id, "done");
+      }
+
+      setSubmittedInfo({
+        timeLabel: updated?.completedAt ? new Date(updated.completedAt).toLocaleString() : new Date().toLocaleString(),
+        filesCount: submissionDeliverables.length,
+        comment: completionComment.trim() || null,
+      });
+      setSubmissionFiles([]);
+      setCompletionComment("");
+      toast.success("Đã nộp task thành công.");
+      if (onTaskSubmitted) onTaskSubmitted(updated);
+    } catch (err) {
+      toast.error(err?.message || "Nộp task thất bại.");
+    } finally {
+      setSubmitting(false);
+    }
   };
   const hasDescription = task.description && (
     task.description.what ||
@@ -102,6 +153,11 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, inline = fal
   const hasDeliverables = task.deliverables && task.deliverables.length > 0;
   const hasReferences = task.references && task.references.length > 0;
   const hasRisksNotes = task.risksNotes && task.risksNotes.trim();
+  const isGroup = task.source === "group";
+  const identityName = isGroup
+    ? task.sourceName || "Nhóm chat"
+    : task.assignee || task.assigner || "Người dùng";
+  const identityInitial = identityName.charAt(0).toUpperCase();
 
   const inner = (
     <>
@@ -120,14 +176,53 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, inline = fal
               {task.sourceName}
             </span>
           </div>
-          <h2 className="mt-2 text-lg font-bold text-gray-900">{task.title}</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Giao bởi {task.assigner}</p>
+          <div className="mt-2 flex items-center gap-3">
+            <div
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
+                isGroup
+                  ? "bg-[#DBEAFE] text-[#1D4ED8]"
+                  : "bg-[#FCE7F3] text-[#BE185D]"
+              }`}
+            >
+              {identityInitial}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold text-gray-900 truncate">
+                {task.title}
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">
+                {isGroup
+                  ? `Giao từ nhóm: ${task.sourceName}`
+                  : `Giao cho: ${task.assignee || "Chưa giao"}`}{" "}
+                · Giao bởi {task.assigner}
+              </p>
+            </div>
+          </div>
         </div>
-        {onClose && (
-          <button type="button" onClick={onClose} className="shrink-0 w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-700" aria-label="Đóng">
-            <X className="w-5 h-5" />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {isAssigner && onTaskUpdated && (
+            <>
+              <button type="button" onClick={() => { setShowEdit(true); setEditPayload({
+                title: task.title,
+                description: task.description?.what || (typeof task.description === "string" ? task.description : "") || "",
+                dueDate: task.dueDate || "",
+                priority: task.priority || "medium",
+              }); }} title="Sửa task" className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-[#FA8DAE]/20 hover:text-[#FA8DAE]">
+                <Pencil className="w-4 h-4" />
+              </button>
+              {onTaskDeleted && (
+                <button type="button" onClick={async () => { if (window.confirm("Xóa task này?")) { try { await taskApi.delete(task.id); toast.success("Đã xóa task."); onTaskDeleted(task.id); } catch (e) { toast.error(e?.message || "Không xóa được."); } } }} title="Xóa task" className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-red-500 hover:bg-red-50">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </>
+          )}
+          {onClose && (
+            <button type="button" onClick={onClose} className="shrink-0 w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-700" aria-label="Đóng">
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
@@ -313,6 +408,7 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, inline = fal
                   <input
                     type="file"
                     multiple
+                    accept="image/*"
                     className="hidden"
                     onChange={handleFilesChange}
                   />
@@ -348,38 +444,55 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, inline = fal
                   type="button"
                   onClick={handleSubmitCompletion}
                   disabled={
-                    submissionFiles.length === 0 &&
-                    completionComment.trim().length === 0
+                    submitting ||
+                    (submissionFiles.length === 0 &&
+                    completionComment.trim().length === 0)
                   }
                   className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition ${
-                    submissionFiles.length === 0 &&
-                    completionComment.trim().length === 0
+                    submitting ||
+                    (submissionFiles.length === 0 &&
+                    completionComment.trim().length === 0)
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-[#FA8DAE] text-white shadow-sm hover:bg-[#F9789E]"
                   }`}
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Gửi & đánh dấu đã xong
+                  {submitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  {submitting ? "Đang gửi..." : "Gửi & đánh dấu đã xong"}
                 </button>
               </div>
 
               {submittedInfo && (
-                <p className="text-[11px] text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mt-1">
-                  Đã lưu thông tin hoàn thành lúc{" "}
-                  <span className="font-semibold">{submittedInfo.timeLabel}</span>
-                  {submittedInfo.filesCount > 0 && (
-                    <>
-                      {" "}
-                      · {submittedInfo.filesCount} file
-                    </>
+                <div className="text-[11px] text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mt-1 space-y-1">
+                  <p>
+                    Đã lưu thông tin hoàn thành lúc{" "}
+                    <span className="font-semibold">{submittedInfo.timeLabel}</span>
+                    {submittedInfo.filesCount > 0 && (
+                      <> · {submittedInfo.filesCount} file</>
+                    )}
+                    {submittedInfo.comment && (
+                      <> · Comment: <span className="italic">{submittedInfo.comment}</span></>
+                    )}
+                  </p>
+                  {task.submissionDeliverables && task.submissionDeliverables.length > 0 && (
+                    <ul className="list-disc list-inside space-y-0.5">
+                      {task.submissionDeliverables.map((d, i) => (
+                        <li key={i}>
+                          {d.link ? (
+                            <a href={d.link} target="_blank" rel="noopener noreferrer" className="text-[#059669] hover:underline">
+                              {d.label || `File ${i + 1}`}
+                            </a>
+                          ) : (
+                            <span>{d.label || `File ${i + 1}`}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                  {submittedInfo.comment && (
-                    <>
-                      {" "}
-                      · Comment: <span className="italic">{submittedInfo.comment}</span>
-                    </>
-                  )}
-                </p>
+                </div>
               )}
             </div>
           </Section>
@@ -430,10 +543,64 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, inline = fal
     </>
   );
 
+  const handleSaveEdit = async () => {
+    if (!editPayload.title?.trim()) {
+      toast.error("Tiêu đề không được để trống.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await taskApi.update(task.id, {
+        title: editPayload.title.trim(),
+        description: editPayload.description?.trim() || "",
+        dueDate: editPayload.dueDate || "",
+        priority: editPayload.priority || "medium",
+      });
+      toast.success("Đã cập nhật task.");
+      setShowEdit(false);
+      if (onTaskUpdated) onTaskUpdated(updated);
+    } catch (e) {
+      toast.error(e?.message || "Không cập nhật được.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (inline) {
     return (
-      <div className="h-full flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-h-0">
+      <div className="h-full flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-h-0 relative">
         {inner}
+        {showEdit && (
+          <div className="absolute inset-0 bg-white z-10 flex flex-col p-4 overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Sửa task</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tiêu đề</label>
+                <input value={editPayload.title || ""} onChange={(e) => setEditPayload((p) => ({ ...p, title: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Mô tả</label>
+                <textarea value={editPayload.description || ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: e.target.value }))} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Hạn</label>
+                <input value={editPayload.dueDate || ""} onChange={(e) => setEditPayload((p) => ({ ...p, dueDate: e.target.value }))} placeholder="VD: 2024-12-31" className="w-full border rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Ưu tiên</label>
+                <select value={editPayload.priority || "medium"} onChange={(e) => setEditPayload((p) => ({ ...p, priority: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm">
+                  <option value="low">Thấp</option>
+                  <option value="medium">Trung bình</option>
+                  <option value="high">Cao</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button type="button" onClick={handleSaveEdit} disabled={saving} className="px-4 py-2 bg-[#FA8DAE] text-white rounded-lg text-sm font-medium disabled:opacity-50">Lưu</button>
+              <button type="button" onClick={() => setShowEdit(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm">Hủy</button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -443,6 +610,37 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, inline = fal
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} aria-hidden="true" />
       <div className="fixed top-0 right-0 bottom-0 w-full max-w-lg bg-white shadow-xl z-50 flex flex-col overflow-hidden">
         {inner}
+        {showEdit && (
+          <div className="absolute inset-0 bg-white z-10 flex flex-col p-4 overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Sửa task</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tiêu đề</label>
+                <input value={editPayload.title || ""} onChange={(e) => setEditPayload((p) => ({ ...p, title: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Mô tả</label>
+                <textarea value={editPayload.description || ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: e.target.value }))} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Hạn</label>
+                <input value={editPayload.dueDate || ""} onChange={(e) => setEditPayload((p) => ({ ...p, dueDate: e.target.value }))} placeholder="VD: 2024-12-31" className="w-full border rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Ưu tiên</label>
+                <select value={editPayload.priority || "medium"} onChange={(e) => setEditPayload((p) => ({ ...p, priority: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm">
+                  <option value="low">Thấp</option>
+                  <option value="medium">Trung bình</option>
+                  <option value="high">Cao</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button type="button" onClick={handleSaveEdit} disabled={saving} className="px-4 py-2 bg-[#FA8DAE] text-white rounded-lg text-sm font-medium disabled:opacity-50">Lưu</button>
+              <button type="button" onClick={() => setShowEdit(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm">Hủy</button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

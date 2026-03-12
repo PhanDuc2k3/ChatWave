@@ -10,5 +10,9 @@ export const userApi = {
       params: { q: query },
     });
   },
+
+  update(id, payload) {
+    return axiosClient.put(`/users/${id}`, payload);
+  },
 };
 

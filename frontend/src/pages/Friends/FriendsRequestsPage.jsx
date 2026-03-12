@@ -221,7 +221,7 @@ export default function FriendsRequestsPage() {
 
             {filteredRequests.length === 0 && (
               <p className="text-[11px] text-gray-500 mt-2">
-                Không có lời mời nào phù hợp.
+                Hiện tại bạn không có lời mời kết bạn nào cần xử lý.
               </p>
             )}
           </div>

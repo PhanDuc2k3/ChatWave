@@ -32,5 +32,13 @@ export const friendApi = {
   getSuggestions(userId) {
     return axiosClient.get("/friends/suggestions", { params: { userId } });
   },
+
+  block(userId, targetId) {
+    return axiosClient.post("/friends/block", { userId, targetId });
+  },
+
+  unblock(userId, targetId) {
+    return axiosClient.post("/friends/unblock", { userId, targetId });
+  },
 };
 

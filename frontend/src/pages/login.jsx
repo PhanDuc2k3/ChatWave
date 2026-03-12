@@ -105,7 +105,7 @@ export default function Login() {
                 </div>
 
                 {/* PASSWORD */}
-                <div className="relative mb-4">
+                <div className="relative mb-2">
                   <input
                     type="password"
                     placeholder="Mật khẩu"
@@ -114,6 +114,11 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <i className="fas fa-eye absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" />
+                </div>
+                <div className="mb-4 text-right">
+                  <Link to="/forgot-password" className="text-sm text-[#FA8DAE] hover:underline">
+                    Quên mật khẩu?
+                  </Link>
                 </div>
 
                 {/* LOGIN BUTTON */}
