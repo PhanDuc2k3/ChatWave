@@ -19,20 +19,16 @@ async function createPost(payload) {
     err.statusCode = 400;
     throw err;
   }
-  const hasText = payload.text != null && String(payload.text).trim() !== "";
-  const hasImage = payload.imageUrl != null && String(payload.imageUrl).trim() !== "";
-  if (!hasText && !hasImage) {
-    const err = new Error("Cần có nội dung text hoặc ảnh");
-    err.statusCode = 400;
-    throw err;
-  }
-
   return postRepository.create({
     authorId: payload.authorId ? String(payload.authorId) : null,
     authorName: payload.authorName,
     authorSubtitle: payload.authorSubtitle || "",
+    authorAvatar: payload.authorAvatar || null,
     text: payload.text != null ? String(payload.text).trim() : "",
     imageUrl: payload.imageUrl || null,
+    feeling: payload.feeling || null,
+    poll: payload.poll || null,
+    scheduledAt: payload.scheduledAt || null,
     groupId: payload.groupId || null,
   });
 }
@@ -43,6 +39,24 @@ async function getPostsByAuthor(userId) {
 
 async function searchPosts(query) {
   return postRepository.search(query);
+}
+
+async function votePoll(postId, optionIndex) {
+  const post = await postRepository.findById(postId);
+  if (!post || !post.poll || !Array.isArray(post.poll.options)) return null;
+  const idx = Number(optionIndex);
+  if (Number.isNaN(idx) || idx < 0 || idx >= post.poll.options.length) return post;
+
+  const options = post.poll.options.map((opt, i) =>
+    i === idx ? { ...opt, votes: (opt.votes || 0) + 1 } : opt
+  );
+
+  return postRepository.update(postId, {
+    poll: {
+      question: post.poll.question,
+      options,
+    },
+  });
 }
 
 async function addComment(postId, payload) {
@@ -87,6 +101,9 @@ async function updatePost(postId, payload) {
   const updateData = {};
   if (payload.text != null) updateData.text = String(payload.text).trim();
   if (payload.imageUrl != null) updateData.imageUrl = payload.imageUrl;
+  if (payload.feeling !== undefined) updateData.feeling = payload.feeling;
+  if (payload.scheduledAt !== undefined) updateData.scheduledAt = payload.scheduledAt;
+  if (payload.poll !== undefined) updateData.poll = payload.poll;
 
   return postRepository.update(postId, updateData);
 }
@@ -102,5 +119,6 @@ module.exports = {
   likePost,
   deletePost,
   updatePost,
+  votePoll,
 };
 

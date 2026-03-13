@@ -15,8 +15,20 @@ const postSchema = new mongoose.Schema(
     authorId: { type: String, default: null, index: true },
     authorName: { type: String, required: true },
     authorSubtitle: { type: String, default: "" },
+    authorAvatar: { type: String, default: null },
     text: { type: String, default: "" },
     imageUrl: { type: String, default: null },
+    feeling: { type: String, default: null },
+    poll: {
+      question: { type: String, default: "" },
+      options: [
+        {
+          text: { type: String, required: true },
+          votes: { type: Number, default: 0 },
+        },
+      ],
+    },
+    scheduledAt: { type: Date, default: null },
     likes: { type: Number, default: 0 },
     comments: { type: Number, default: 0 },
     shares: { type: Number, default: 0 },

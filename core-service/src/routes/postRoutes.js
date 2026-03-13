@@ -25,6 +25,9 @@ router.patch("/:id", requireAuth, postController.updatePost);
 // POST /api/v1/posts/:id/comments
 router.post("/:id/comments", requireAuth, postController.addComment);
 
+// POST /api/v1/posts/:id/poll-vote
+router.post("/:id/poll-vote", requireAuth, postController.votePoll);
+
 // POST /api/v1/posts/:id/like
 router.post("/:id/like", requireAuth, postController.likePost);
 

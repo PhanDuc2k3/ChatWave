@@ -15,7 +15,11 @@ async function search(query) {
 }
 
 async function findAll() {
-  const posts = await Post.find({ groupId: null }).sort({ createdAt: -1 });
+  const now = new Date();
+  const posts = await Post.find({
+    groupId: null,
+    $or: [{ scheduledAt: null }, { scheduledAt: { $lte: now } }],
+  }).sort({ createdAt: -1 });
   return posts.map((p) => p.toObject());
 }
 
