@@ -33,7 +33,7 @@ export default function MainLayout({
     if (location.pathname.startsWith("/groups")) return "groups";
     if (location.pathname.startsWith("/message")) return "chat";
     if (location.pathname.startsWith("/tasks")) return "tasks";
-    if (location.pathname.startsWith("/meeting")) return "meeting";
+    if (location.pathname.startsWith("/chatbot")) return "chatbot";
     return "home";
   }, [location.pathname]);
 
@@ -61,8 +61,8 @@ export default function MainLayout({
       case "tasks":
         navigate("/tasks");
         break;
-      case "meeting":
-        navigate("/meeting");
+      case "chatbot":
+        navigate("/chatbot");
         break;
       case "notifications":
         navigate("/notifications");
@@ -85,15 +85,6 @@ export default function MainLayout({
         {/* MAIN CONTENT - chỉ phần này cuộn */}
         <main className="flex-1 min-h-0 bg-white relative px-0 overflow-auto">
             {children}
-
-            {/* Floating bot avatar bottom-right, overlapping content */}
-            <div className="hidden md:block fixed bottom-6 right-8 pointer-events-auto">
-              <div className="w-16 h-16 rounded-full bg-[#E7F3FF] shadow-lg flex items-center justify-center">
-                <div className="w-10 h-10 rounded-full bg-[#6CB8FF] flex items-center justify-center text-white text-2xl">
-                  🤖
-                </div>
-              </div>
-            </div>
         </main>
       </div>
     </div>

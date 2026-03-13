@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import { Heart, MessageCircle, Share2, Pencil } from "lucide-react";
+import { uploadApi } from "../../api/uploadApi";
 
 export default function HomePostCard({
   post,
@@ -9,13 +10,19 @@ export default function HomePostCard({
   onDelete,
   onEdit,
   onOpenComments,
+  onVotePoll,
   showAllComments = false,
+  onToggleSave,
+  isSaved = false,
 }) {
   const [commentText, setCommentText] = useState("");
   const [showEdit, setShowEdit] = useState(false);
   const [editText, setEditText] = useState(post.text || "");
   const [editImageUrl, setEditImageUrl] = useState(post.imageUrl || "");
+  const [editImageFile, setEditImageFile] = useState(null);
+  const [editImagePreview, setEditImagePreview] = useState(null);
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef(null);
 
   const isAuthor = useMemo(() => {
     try {
@@ -63,6 +70,8 @@ export default function HomePostCard({
     return `Bạn và ${total - 1} người khác đã yêu thích`;
   }, [post.likes, hasLiked]);
 
+  const saveLabel = isSaved ? "Bỏ lưu bài viết" : "Lưu bài viết";
+
   const formatPostTime = () => {
     if (post.timeAgo) return post.timeAgo;
     if (!post.createdAt) return "";
@@ -102,15 +111,29 @@ export default function HomePostCard({
     setCommentText("");
   };
 
-  const initial = post.authorName.charAt(0).toUpperCase();
+  const authorAvatar = post.authorAvatar || post.avatar || null;
+  const initial = (post.authorName || "U").charAt(0).toUpperCase();
 
   const handleSaveEdit = async () => {
     if (!onEdit) return;
-    if (!editText.trim() && !editImageUrl.trim()) return;
+    if (!editText.trim() && !editImageUrl && !editImageFile) return;
     setSaving(true);
     try {
-      await onEdit(post.id || post._id, { text: editText.trim(), imageUrl: editImageUrl || null });
+      let finalImageUrl = editImageUrl || null;
+      if (editImageFile) {
+        const data = await uploadApi.uploadImage(editImageFile);
+        finalImageUrl = data?.url || null;
+      }
+      await onEdit(post.id || post._id, {
+        text: editText.trim(),
+        imageUrl: finalImageUrl,
+      });
       setShowEdit(false);
+      setEditImageFile(null);
+      if (editImagePreview) {
+        URL.revokeObjectURL(editImagePreview);
+        setEditImagePreview(null);
+      }
     } finally {
       setSaving(false);
     }
@@ -120,31 +143,67 @@ export default function HomePostCard({
     <article className="w-full bg-white rounded-2xl shadow-sm border border-[#E2E8F0] px-4 py-4 md:px-5 md:py-5 relative">
       {/* Header */}
       <header className="flex items-center gap-4 mb-4">
-        <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-[#FA8DAE]/20 flex items-center justify-center text-sm md:text-base font-semibold text-[#FA8DAE]">
-          {initial}
+        <div className="w-11 h-11 md:w-12 md:h-12 rounded-full overflow-hidden bg-[#FA8DAE]/20 flex items-center justify-center text-sm md:text-base font-semibold text-[#FA8DAE]">
+          {authorAvatar ? (
+            <img
+              src={authorAvatar}
+              alt={post.authorName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            initial
+          )}
         </div>
         <div className="flex-1">
           <p className="text-sm md:text-base font-semibold text-gray-900">
             {post.authorName}
           </p>
           <p className="text-xs md:text-sm text-gray-500">
-            {post.authorSubtitle} · {formatPostTime()}
+            {post.authorSubtitle}
+            {post.feeling && ` · ${post.feeling}`}
+            {" · "}
+            {formatPostTime()}
           </p>
         </div>
-        {(onDelete || (onEdit && isAuthor)) && (
+        {(onDelete || (onEdit && isAuthor) || onToggleSave) && (
           <div className="relative group">
-            <button type="button" className="text-gray-400 hover:text-gray-600 text-2xl px-2" aria-label="Tùy chọn">
+            <button
+              type="button"
+              className="text-gray-400 hover:text-gray-600 text-2xl px-2"
+              aria-label="Tùy chọn"
+            >
               •••
             </button>
-            <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg py-1 z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition">
+            <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg py-1 z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition min-w-[190px]">
               {onEdit && isAuthor && (
-                <button type="button" onClick={() => { setEditText(post.text || ""); setEditImageUrl(post.imageUrl || ""); setShowEdit(true); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditText(post.text || "");
+                    setEditImageUrl(post.imageUrl || "");
+                    setShowEdit(true);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 whitespace-nowrap"
+                >
                   <Pencil className="w-4 h-4" /> Sửa bài viết
                 </button>
               )}
               {onDelete && isAuthor && (
-                <button type="button" onClick={() => onDelete(post.id || post._id)} className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">
+                <button
+                  type="button"
+                  onClick={() => onDelete(post.id || post._id)}
+                  className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 whitespace-nowrap"
+                >
                   Gỡ bài viết
+                </button>
+              )}
+              {onToggleSave && (
+                <button
+                  type="button"
+                  onClick={() => onToggleSave(post)}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap"
+                >
+                  {saveLabel}
                 </button>
               )}
             </div>
@@ -153,23 +212,118 @@ export default function HomePostCard({
       </header>
 
       {showEdit && (
-        <div className="absolute inset-0 bg-white rounded-2xl z-10 p-4 flex flex-col">
-          <h3 className="text-sm font-semibold mb-3">Sửa bài viết</h3>
-          <textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={4} className="w-full border rounded-lg px-3 py-2 text-sm mb-3 resize-none" placeholder="Nội dung..." />
-          <input value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm mb-3" placeholder="URL ảnh (để trống nếu không đổi)" />
-          <div className="flex gap-2">
-            <button type="button" onClick={handleSaveEdit} disabled={saving} className="px-3 py-1.5 bg-[#FA8DAE] text-white rounded-lg text-sm font-medium">Lưu</button>
-            <button type="button" onClick={() => setShowEdit(false)} className="px-3 py-1.5 border rounded-lg text-sm">Hủy</button>
+        <div className="absolute inset-0 bg-white rounded-2xl z-10 p-4 flex flex-col gap-3">
+          <h3 className="text-sm font-semibold">Sửa bài viết</h3>
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            rows={4}
+            className="w-full border rounded-lg px-3 py-2 text-sm resize-none"
+            placeholder="Nội dung..."
+          />
+          <div className="flex items-center justify-between gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (!file.type.startsWith("image/")) return;
+                if (editImagePreview) URL.revokeObjectURL(editImagePreview);
+                setEditImageFile(file);
+                setEditImagePreview(URL.createObjectURL(file));
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Chọn ảnh
+            </button>
+            {(editImageUrl || editImageFile) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditImageUrl("");
+                  if (editImagePreview) URL.revokeObjectURL(editImagePreview);
+                  setEditImageFile(null);
+                  setEditImagePreview(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+                className="text-xs text-red-500 hover:underline"
+              >
+                Xóa ảnh
+              </button>
+            )}
+          </div>
+          {(editImagePreview || editImageUrl) && (
+            <div className="mt-1 rounded-xl overflow-hidden border border-gray-200 max-h-48">
+              <img
+                src={editImagePreview || editImageUrl}
+                alt="Preview"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+          <div className="flex gap-2 mt-auto">
+            <button
+              type="button"
+              onClick={handleSaveEdit}
+              disabled={saving}
+              className="px-3 py-1.5 bg-[#FA8DAE] text-white rounded-lg text-sm font-medium disabled:opacity-60"
+            >
+              {saving ? "Đang lưu..." : "Lưu"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowEdit(false);
+                if (editImagePreview) {
+                  URL.revokeObjectURL(editImagePreview);
+                  setEditImagePreview(null);
+                  setEditImageFile(null);
+                }
+                setEditImageUrl(post.imageUrl || "");
+                setEditText(post.text || "");
+              }}
+              className="px-3 py-1.5 border rounded-lg text-sm"
+            >
+              Hủy
+            </button>
           </div>
         </div>
       )}
 
       {/* Content */}
       <div className="space-y-3">
-        {post.text && (
+        {post.text ? (
           <p className="text-sm md:text-base text-gray-800 leading-relaxed">
             {post.text}
           </p>
+        ) : (
+          // Fallback khi không có text
+          <>
+            {post.feeling && (
+              <p className="text-sm md:text-base text-gray-800 leading-relaxed">
+                Đang cảm thấy {post.feeling}.
+              </p>
+            )}
+            {!post.feeling && post.poll && post.poll.question && (
+              <p className="text-sm md:text-base text-gray-800 leading-relaxed">
+                Khảo sát: {post.poll.question}
+              </p>
+            )}
+            {!post.feeling &&
+              !post.poll &&
+              post.scheduledAt && (
+                <p className="text-sm md:text-base text-gray-800 leading-relaxed">
+                  Bài viết này được đăng theo lịch.
+                </p>
+              )}
+          </>
         )}
 
         {post.imageUrl && (
@@ -272,6 +426,28 @@ export default function HomePostCard({
           </form>
         )}
       </div>
+
+      {/* Poll (khảo sát) */}
+      {post.poll && post.poll.question && Array.isArray(post.poll.options) && post.poll.options.length > 0 && (
+        <div className="mt-3 border-t border-dashed border-gray-200 pt-3 space-y-2">
+          <p className="text-sm font-semibold text-gray-800">{post.poll.question}</p>
+          <div className="space-y-1">
+            {post.poll.options.map((opt, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => onVotePoll && onVotePoll(post.id || post._id, idx)}
+                className="w-full flex items-center justify-between px-3 py-1.5 rounded-full border border-gray-200 text-xs md:text-sm text-gray-700 hover:bg-[#FFF7F0]"
+              >
+                <span className="truncate">{opt.text}</span>
+                <span className="ml-2 text-[11px] text-gray-500">
+                  {opt.votes || 0} phiếu
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </article>
   );
 }

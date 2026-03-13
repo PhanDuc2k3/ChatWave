@@ -11,7 +11,7 @@ import Friends from "./pages/Friends";
 import GroupsPage from "./pages/Groups/GroupsPage";
 import GroupDetailPage from "./pages/Groups/GroupDetailPage";
 import Tasks from "./pages/Tasks";
-import Meeting from "./pages/Meeting";
+import ChatbotPage from "./pages/Chatbot/ChatbotPage";
 import Profile from "./pages/Profile";
 import AdminTasks from "./pages/AdminTasks";
 import SearchPage from "./pages/Search/SearchPage";
@@ -31,7 +31,7 @@ export default function App() {
           <Route path="/groups/:id" element={<GroupDetailPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/tasks" element={<Tasks />} />
-          <Route path="/meeting" element={<Meeting />} />
+          <Route path="/chatbot" element={<ChatbotPage />} />
           <Route path="/admin/tasks" element={<AdminTasks />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:id" element={<Profile />} />

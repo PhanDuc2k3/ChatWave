@@ -4,7 +4,7 @@ import {
   MessageCircle,
   Users,
   ClipboardList,
-  Video,
+  Bot,
   Settings,
 } from "lucide-react";
 import PropTypes from "prop-types";
@@ -66,17 +66,17 @@ export default function Sidebar({ activeNav, setActiveNav }) {
             <ClipboardList className="w-5 h-5" />
           </button>
 
-          {/* Phòng họp */}
+          {/* Chatbot AI */}
           <button
-            title="Phòng họp"
-            onClick={() => setActiveNav("meeting")}
+            title="Chatbot AI"
+            onClick={() => setActiveNav("chatbot")}
             className={`w-12 h-11 rounded-xl flex items-center justify-center transition-colors ${
-              activeNav === "meeting"
+              activeNav === "chatbot"
                 ? "bg-white text-[#FA8DAE] shadow-sm hover:bg-[#f6f6f6]"
                 : "border border-white/70 text-white hover:bg-white/20"
             }`}
           >
-            <Video className="w-5 h-5" />
+            <Bot className="w-5 h-5" />
           </button>
         </nav>
       </div>

@@ -37,6 +37,7 @@ export default function GroupDetailPage() {
   const myRole = group?.members?.find((m) => m.userId === currentUserId)?.role;
   const canManageGroup = myRole === "owner" || myRole === "admin";
   const canAssignAdmin = myRole === "owner";
+  const canLeaveGroup = isMember && myRole !== "owner";
 
   const withLikeState = (post) => {
     const likedBy = post.likedBy || [];
@@ -126,6 +127,21 @@ export default function GroupDetailPage() {
       toast.success("Đã tham gia nhóm!");
     } catch (err) {
       toast.error(err?.message || "Không thể tham gia nhóm.");
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!canLeaveGroup || !id || !currentUserId) return;
+    if (!window.confirm("Bạn có chắc muốn rời khỏi nhóm này?")) return;
+    try {
+      setJoining(true);
+      await groupApi.removeMember(id, currentUserId);
+      toast.success("Bạn đã rời khỏi nhóm.");
+      navigate("/groups");
+    } catch (err) {
+      toast.error(err?.message || "Không thể rời nhóm, vui lòng thử lại.");
     } finally {
       setJoining(false);
     }
@@ -298,6 +314,16 @@ export default function GroupDetailPage() {
                   className="mt-3 px-4 py-2 rounded-full bg-[#FA8DAE] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-60"
                 >
                   {joining ? "Đang tham gia..." : "Tham gia nhóm"}
+                </button>
+              )}
+              {canLeaveGroup && (
+                <button
+                  type="button"
+                  onClick={handleLeave}
+                  disabled={joining}
+                  className="mt-3 ml-0 md:ml-3 px-4 py-2 rounded-full border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  Rời nhóm
                 </button>
               )}
             </div>

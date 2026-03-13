@@ -33,6 +33,10 @@ export const postApi = {
     return axiosClient.post(`/posts/${postId}/like`, { userId });
   },
 
+  votePoll(postId, optionIndex) {
+    return axiosClient.post(`/posts/${postId}/poll-vote`, { optionIndex });
+  },
+
   remove(postId) {
     return axiosClient.delete(`/posts/${postId}`);
   },

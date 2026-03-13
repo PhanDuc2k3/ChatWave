@@ -615,7 +615,7 @@ export default function ProfilePage() {
                   />
                   <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
                     <ImagePlus className="w-4 h-4" />
-                    Chọn ảnh (Cloudinary)
+                    Chọn ảnh
                   </span>
                 </label>
               </div>
