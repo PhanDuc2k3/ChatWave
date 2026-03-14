@@ -7,6 +7,7 @@ const chatbotClient = axios.create({
   baseURL,
   headers: { "Content-Type": "application/json" },
   withCredentials: false,
+  timeout: 90000,
 });
 
 chatbotClient.interceptors.response.use(
@@ -25,5 +26,9 @@ export const chatbotApi = {
       max_tokens: options.max_tokens || 1024,
       temperature: options.temperature ?? 0.7,
     });
+  },
+
+  createTasksFromChat(messages) {
+    return chatbotClient.post("/chat/create-tasks", { messages });
   },
 };
