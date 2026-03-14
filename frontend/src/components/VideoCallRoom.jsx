@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNotification } from "../context/NotificationContext";
 import {
   Video,
   VideoOff,
@@ -27,7 +26,6 @@ export default function VideoCallRoom({
   const localStreamRef = useRef(null);
   const peersRef = useRef({});
   const socketRef = useRef(null);
-  const { setInCall } = useNotification() || {};
 
   useEffect(() => {
     if (!roomId || !currentUserId || !currentUserName) return;
@@ -187,11 +185,9 @@ export default function VideoCallRoom({
       }
     };
 
-    if (typeof setInCall === "function") setInCall(true);
     startLocalStream();
 
     return () => {
-      if (typeof setInCall === "function") setInCall(false);
       socket.off("call_room_members", handleRoomMembers);
       socket.off("user_joined_call", handleUserJoined);
       socket.off("call_offer", handleCallOffer);

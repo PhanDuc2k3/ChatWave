@@ -1,7 +1,7 @@
 import React from "react";
-import FriendsPage from "./Friends/FriendsPage";
-import FriendsRequestsPage from "./Friends/FriendsRequestsPage";
-import FriendsAllPage from "./Friends/FriendsAllPage";
+import FriendsPage from "./FriendsPage";
+import FriendsRequestsPage from "./FriendsRequestsPage";
+import FriendsAllPage from "./FriendsAllPage";
 import { Routes, Route } from "react-router-dom";
 
 export default function Friends() {
@@ -13,4 +13,3 @@ export default function Friends() {
     </Routes>
   );
 }
-

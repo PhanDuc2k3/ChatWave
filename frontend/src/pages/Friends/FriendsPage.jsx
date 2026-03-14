@@ -1,34 +1,25 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, UserPlus, Gift, List } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { friendApi } from "../../api/friendApi";
+import { useFriends } from "../../hooks/useFriends";
 import toast from "react-hot-toast";
 
 export default function FriendsPage() {
   const navigate = useNavigate();
-  const [requests, setRequests] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
-
-  useEffect(() => {
-    const storedUser =
-      JSON.parse(localStorage.getItem("chatwave_user") || "null") || null;
-    const currentUserId = storedUser?.id || storedUser?._id || null;
-    if (!currentUserId) return;
-
-    const load = async () => {
-      try {
-        const reqData = await friendApi.getRequests(currentUserId);
-        setRequests(reqData.incoming || []);
-        const sugData = await friendApi.getSuggestions(currentUserId);
-        setSuggestions(sugData || []);
-      } catch (err) {
-        toast.error(err?.message || "Không tải được dữ liệu bạn bè.");
-      }
-    };
-
-    load();
+  const handleFetchError = useCallback((err) => {
+    toast.error(err?.message || "Không tải được dữ liệu bạn bè.");
   }, []);
+
+  const {
+    requests,
+    suggestions,
+    setRequests,
+    removeRequest,
+    removeSuggestion,
+    currentUserId,
+  } = useFriends({ onError: handleFetchError });
 
   const headerContent = (
     <div className="flex items-center justify-between w-full">
@@ -64,20 +55,8 @@ export default function FriendsPage() {
               type="button"
               onClick={async () => {
                 try {
-                  const storedUser =
-                    JSON.parse(
-                      localStorage.getItem("chatwave_user") || "null"
-                    ) || null;
-                  const currentUserId =
-                    storedUser?.id || storedUser?._id || null;
-                  await friendApi.respondRequest(
-                    req.id,
-                    currentUserId,
-                    "accept"
-                  );
-                  setRequests((prev) =>
-                    prev.filter((r) => r.id !== req.id)
-                  );
+                  await friendApi.respondRequest(req.id, currentUserId, "accept");
+                  removeRequest(req.id);
                   toast.success("Đã chấp nhận lời mời kết bạn.");
                 } catch (err) {
                   toast.error(err?.message || "Không xác nhận được lời mời.");
@@ -91,20 +70,8 @@ export default function FriendsPage() {
               type="button"
               onClick={async () => {
                 try {
-                  const storedUser =
-                    JSON.parse(
-                      localStorage.getItem("chatwave_user") || "null"
-                    ) || null;
-                  const currentUserId =
-                    storedUser?.id || storedUser?._id || null;
-                  await friendApi.respondRequest(
-                    req.id,
-                    currentUserId,
-                    "decline"
-                  );
-                  setRequests((prev) =>
-                    prev.filter((r) => r.id !== req.id)
-                  );
+                  await friendApi.respondRequest(req.id, currentUserId, "decline");
+                  removeRequest(req.id);
                   toast.success("Đã xoá lời mời.");
                 } catch (err) {
                   toast.error(err?.message || "Không xoá được lời mời.");
@@ -244,27 +211,15 @@ export default function FriendsPage() {
                           type="button"
                           onClick={async () => {
                             try {
-                              const storedUser =
-                                JSON.parse(
-                                  localStorage.getItem("chatwave_user") ||
-                                    "null"
-                                ) || null;
-                              const currentUserId =
-                                storedUser?.id || storedUser?._id || null;
                               if (!currentUserId) {
                                 toast.error(
                                   "Bạn cần đăng nhập để gửi lời mời kết bạn."
                                 );
                                 return;
                               }
-                              await friendApi.sendRequest(
-                                sug.id,
-                                currentUserId
-                              );
+                              await friendApi.sendRequest(sug.id, currentUserId);
                               toast.success("Đã gửi lời mời kết bạn.");
-                              setSuggestions((prev) =>
-                                prev.filter((x) => x.id !== sug.id)
-                              );
+                              removeSuggestion(sug.id);
                             } catch (err) {
                               toast.error(
                                 err?.message ||

@@ -1,8 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { NotificationProvider } from "./context/NotificationContext";
-import Login from "./pages/login";
-import Register from "./pages/register";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Message from "./pages/Message";
@@ -19,7 +18,6 @@ import SearchPage from "./pages/Search/SearchPage";
 export default function App() {
   return (
     <BrowserRouter>
-        <NotificationProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -37,7 +35,6 @@ export default function App() {
           <Route path="/profile/:id" element={<Profile />} />
           <Route path="/" element={<Home />} />
         </Routes>
-        </NotificationProvider>
       </BrowserRouter>
   );
 }

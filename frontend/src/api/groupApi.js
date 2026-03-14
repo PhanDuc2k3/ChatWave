@@ -32,6 +32,26 @@ export const groupApi = {
     return axiosClient.post(`/groups/${groupId}/members`, payload);
   },
 
+  getJoinRequests(groupId) {
+    return axiosClient.get(`/groups/${groupId}/join-requests`);
+  },
+
+  getMyJoinRequest(groupId) {
+    return axiosClient.get(`/groups/${groupId}/my-join-request`);
+  },
+
+  approveJoinRequest(groupId, requestId) {
+    return axiosClient.post(
+      `/groups/${groupId}/join-requests/${requestId}/approve`
+    );
+  },
+
+  rejectJoinRequest(groupId, requestId) {
+    return axiosClient.post(
+      `/groups/${groupId}/join-requests/${requestId}/reject`
+    );
+  },
+
   updateMemberRole(groupId, memberId, role) {
     return axiosClient.patch(`/groups/${groupId}/members/${memberId}`, {
       role,

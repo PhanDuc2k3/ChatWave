@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Lock, Crown, Shield, User } from "lucide-react";
+import { ArrowLeft, Users, Lock, Crown, Shield, User, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../context/ConfirmContext";
 import MainLayout from "../../layouts/MainLayout";
 import HomeCreatePost from "../Home/HomeCreatePost";
 import HomePostCard from "../Home/HomePostCard";
@@ -12,6 +13,7 @@ const ROLE_LABELS = { owner: "Nhóm trưởng", admin: "Nhóm phó", member: "Th
 
 export default function GroupDetailPage() {
   const { id } = useParams();
+  const { confirm } = useConfirm();
   const navigate = useNavigate();
   const [group, setGroup] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -22,6 +24,9 @@ export default function GroupDetailPage() {
   const [activePost, setActivePost] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [joinRequested, setJoinRequested] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [processingRequest, setProcessingRequest] = useState(null);
 
   const currentUser = React.useMemo(() => {
     try {
@@ -61,6 +66,26 @@ export default function GroupDetailPage() {
     };
     fetchGroup();
   }, [id, navigate]);
+
+  useEffect(() => {
+    if (!id || !currentUserId || !group) return;
+    if (group.visibility === "private" && !isMember) {
+      groupApi
+        .getMyJoinRequest(id)
+        .then((r) => setJoinRequested(!!r))
+        .catch(() => setJoinRequested(false));
+    } else {
+      setJoinRequested(false);
+    }
+  }, [id, currentUserId, group, isMember]);
+
+  useEffect(() => {
+    if (!id || !canManageGroup) return;
+    groupApi
+      .getJoinRequests(id)
+      .then((list) => setPendingRequests(list || []))
+      .catch(() => setPendingRequests([]));
+  }, [id, canManageGroup]);
 
   useEffect(() => {
     if (!id || !currentUserId || !isMember) return;
@@ -118,13 +143,18 @@ export default function GroupDetailPage() {
     }
     try {
       setJoining(true);
-      await groupApi.addMember(id, {
+      const result = await groupApi.addMember(id, {
         userId: currentUserId,
         displayName: ownerName,
       });
-      const updated = await groupApi.getById(id);
-      setGroup(updated);
-      toast.success("Đã tham gia nhóm!");
+      if (group?.visibility === "private" && result?.status === "pending") {
+        setJoinRequested(true);
+        toast.success("Đã gửi yêu cầu tham gia. Vui lòng chờ admin duyệt.");
+      } else {
+        const updated = await groupApi.getById(id);
+        setGroup(updated);
+        toast.success("Đã tham gia nhóm!");
+      }
     } catch (err) {
       toast.error(err?.message || "Không thể tham gia nhóm.");
     } finally {
@@ -132,9 +162,42 @@ export default function GroupDetailPage() {
     }
   };
 
+  const handleApproveJoinRequest = async (requestId) => {
+    if (!canManageGroup || !id) return;
+    try {
+      setProcessingRequest(requestId);
+      await groupApi.approveJoinRequest(id, requestId);
+      const [updatedGroup, requests] = await Promise.all([
+        groupApi.getById(id),
+        groupApi.getJoinRequests(id),
+      ]);
+      setGroup(updatedGroup);
+      setPendingRequests(requests || []);
+      toast.success("Đã duyệt yêu cầu tham gia.");
+    } catch (err) {
+      toast.error(err?.message || "Không thể duyệt.");
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
+
+  const handleRejectJoinRequest = async (requestId) => {
+    if (!canManageGroup || !id) return;
+    try {
+      setProcessingRequest(requestId);
+      await groupApi.rejectJoinRequest(id, requestId);
+      setPendingRequests((prev) => prev.filter((r) => (r.id || r._id) !== requestId));
+      toast.success("Đã từ chối yêu cầu.");
+    } catch (err) {
+      toast.error(err?.message || "Không thể từ chối.");
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
+
   const handleLeave = async () => {
     if (!canLeaveGroup || !id || !currentUserId) return;
-    if (!window.confirm("Bạn có chắc muốn rời khỏi nhóm này?")) return;
+    if (!(await confirm("Bạn có chắc muốn rời khỏi nhóm này?"))) return;
     try {
       setJoining(true);
       await groupApi.removeMember(id, currentUserId);
@@ -219,7 +282,7 @@ export default function GroupDetailPage() {
   };
 
   const handleDeletePost = async (postId) => {
-    if (!window.confirm("Bạn có chắc muốn gỡ bài viết này?")) return;
+    if (!(await confirm("Bạn có chắc muốn gỡ bài viết này?"))) return;
     try {
       await postApi.remove(postId);
       setPosts((prev) => prev.filter((p) => (p.id || p._id) !== postId));
@@ -310,10 +373,20 @@ export default function GroupDetailPage() {
                 <button
                   type="button"
                   onClick={handleJoin}
-                  disabled={joining}
-                  className="mt-3 px-4 py-2 rounded-full bg-[#FA8DAE] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+                  disabled={joining || joinRequested}
+                  className={`mt-3 px-4 py-2 rounded-full text-sm font-semibold ${
+                    joinRequested
+                      ? "bg-gray-200 text-gray-600 cursor-not-allowed"
+                      : "bg-[#FA8DAE] text-white hover:opacity-90 disabled:opacity-60"
+                  }`}
                 >
-                  {joining ? "Đang tham gia..." : "Tham gia nhóm"}
+                  {joining
+                    ? "Đang gửi..."
+                    : joinRequested
+                    ? "Chờ duyệt"
+                    : group.visibility === "private"
+                    ? "Yêu cầu tham gia"
+                    : "Tham gia nhóm"}
                 </button>
               )}
               {canLeaveGroup && (
@@ -352,6 +425,39 @@ export default function GroupDetailPage() {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {canManageGroup && pendingRequests.length > 0 && (
+                  <div className="mb-4 pb-4 border-b border-gray-200">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Yêu cầu chờ duyệt</h4>
+                    {pendingRequests.map((r) => (
+                      <div
+                        key={r.id || r._id}
+                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-amber-50"
+                      >
+                        <span className="text-sm text-gray-800">{r.displayName}</span>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleApproveJoinRequest(r.id || r._id)}
+                            disabled={processingRequest === (r.id || r._id)}
+                            className="p-1.5 rounded-full bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-60"
+                            title="Duyệt"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRejectJoinRequest(r.id || r._id)}
+                            disabled={processingRequest === (r.id || r._id)}
+                            className="p-1.5 rounded-full bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-60"
+                            title="Từ chối"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {group.members.map((m) => (
                   <div
                     key={m.userId}
@@ -436,15 +542,19 @@ export default function GroupDetailPage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
             <Lock className="w-12 h-12 text-gray-300 mb-3 mx-auto" />
             <p className="text-gray-600">
-              Tham gia nhóm để xem và đăng bài viết.
+              {joinRequested ? "Đã gửi yêu cầu. Vui lòng chờ admin duyệt." : "Tham gia nhóm để xem và đăng bài viết."}
             </p>
             <button
               type="button"
               onClick={handleJoin}
-              disabled={joining}
-              className="mt-4 px-6 py-2 rounded-full bg-[#FA8DAE] text-white font-semibold hover:opacity-90 disabled:opacity-60"
+              disabled={joining || joinRequested}
+              className={`mt-4 px-6 py-2 rounded-full text-sm font-semibold ${
+                joinRequested
+                  ? "bg-gray-200 text-gray-600 cursor-not-allowed"
+                  : "bg-[#FA8DAE] text-white hover:opacity-90 disabled:opacity-60"
+              }`}
             >
-              {joining ? "Đang tham gia..." : "Tham gia nhóm"}
+              {joining ? "Đang gửi..." : joinRequested ? "Chờ duyệt" : group.visibility === "private" ? "Yêu cầu tham gia" : "Tham gia nhóm"}
             </button>
           </div>
         )}

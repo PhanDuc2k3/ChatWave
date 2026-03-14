@@ -1,5 +1,5 @@
 import React from "react";
-import TasksPage from "./Tasks/TasksPage";
+import TasksPage from "./TasksPage";
 
 export default function Tasks() {
   return <TasksPage />;

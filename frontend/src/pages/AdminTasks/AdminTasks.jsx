@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import MainLayout from "../layouts/MainLayout";
-import TasksPage from "./Tasks/TasksPage";
-import { mockAssignedTasks } from "./Tasks/tasksData";
+import MainLayout from "../../layouts/MainLayout";
+import TasksPage from "../Tasks/TasksPage";
+import { mockAssignedTasks } from "../Tasks/tasksData";
 import { ClipboardList, Filter, Users, User, CheckCircle2, Loader2, Circle } from "lucide-react";
 
 const STATUS_LABELS = {
@@ -55,13 +55,11 @@ export default function AdminTasks() {
   return (
     <MainLayout headerContent={headerContent}>
       <div className="w-full flex flex-col gap-4 py-3 pb-6">
-        {/* Bộ lọc tổng quan */}
         <div className="bg-white rounded-2xl border border-gray-200 p-3 shadow-sm flex flex-wrap items-center gap-3">
           <div className="inline-flex items-center gap-2 text-xs font-medium text-gray-600">
             <Filter className="w-4 h-4 text-[#FA8DAE]" />
             <span>Bộ lọc</span>
           </div>
-
           <div className="flex items-center gap-2 flex-wrap text-xs">
             <span className="text-gray-500">Trạng thái:</span>
             {[
@@ -84,7 +82,6 @@ export default function AdminTasks() {
               </button>
             ))}
           </div>
-
           <div className="flex items-center gap-2 flex-wrap text-xs">
             <span className="text-gray-500">Nguồn:</span>
             {[
@@ -107,7 +104,6 @@ export default function AdminTasks() {
               </button>
             ))}
           </div>
-
           <div className="ml-auto flex items-center gap-3 text-[11px] text-gray-500">
             <span>Chờ làm: {stats.pending}</span>
             <span>Đang làm: {stats.inProgress}</span>
@@ -115,7 +111,6 @@ export default function AdminTasks() {
           </div>
         </div>
 
-        {/* Bảng theo dõi nhanh */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="border-b border-gray-100 px-4 py-2 text-xs font-semibold text-gray-500 grid grid-cols-[1.5fr,1fr,1fr,1fr,1fr,1.2fr,1.8fr] gap-2">
             <span>Task</span>
@@ -195,4 +190,3 @@ export default function AdminTasks() {
     </MainLayout>
   );
 }
-

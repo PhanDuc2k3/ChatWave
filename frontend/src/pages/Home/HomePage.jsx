@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../context/ConfirmContext";
 import MainLayout from "../../layouts/MainLayout";
 import HomeCreatePost from "./HomeCreatePost";
 import HomePostCard from "./HomePostCard";
@@ -10,6 +11,7 @@ import { messageApi } from "../../api/messageApi";
 import { groupApi } from "../../api/groupApi";
 
 export default function HomePage() {
+  const { confirm } = useConfirm();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -587,7 +589,7 @@ export default function HomePage() {
   };
 
   const handleDeletePost = async (postId) => {
-    if (!window.confirm("Bạn có chắc muốn gỡ bài viết này?")) return;
+    if (!(await confirm("Bạn có chắc muốn gỡ bài viết này?"))) return;
     try {
       await postApi.remove(postId);
       setPosts((prev) =>

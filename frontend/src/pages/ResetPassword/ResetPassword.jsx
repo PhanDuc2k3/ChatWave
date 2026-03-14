@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { authApi } from "../api/authApi";
-import logo from "../assets/logo-web.png";
-import bgSocial from "../assets/bglogin.png";
+import { authApi } from "../../api/authApi";
+import logo from "../../assets/logo-web.png";
+import bgSocial from "../../assets/bglogin.png";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -22,6 +22,14 @@ export default function ResetPassword() {
     }
     if (!newPassword || newPassword.length < 6) {
       toast.error("Mật khẩu mới ít nhất 6 ký tự.");
+      return;
+    }
+    if (!/[a-zA-Z]/.test(newPassword)) {
+      toast.error("Mật khẩu cần có ít nhất 1 chữ cái.");
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      toast.error("Mật khẩu cần có ít nhất 1 chữ số.");
       return;
     }
     if (newPassword !== confirmPassword) {

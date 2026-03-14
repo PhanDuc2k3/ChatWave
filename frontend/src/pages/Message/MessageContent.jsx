@@ -12,9 +12,13 @@ import {
   User,
   Bell,
   Search,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../context/ConfirmContext";
 import { getChatSocket } from "../../socket/chatSocket";
+import { uploadApi } from "../../api/uploadApi";
 import VideoCallRoom from "../../components/VideoCallRoom";
 import { messageApi } from "../../api/messageApi";
 import { postApi } from "../../api/postApi";
@@ -26,6 +30,7 @@ export default function MessageContent({
   onOpenCreateTask,
   onLeaveGroup,
 }) {
+  const { confirm } = useConfirm();
   const messagesEndRef = useRef(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -40,6 +45,9 @@ export default function MessageContent({
   const emojiPickerRef = useRef(null);
   const [previewPost, setPreviewPost] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [pendingImageUrl, setPendingImageUrl] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
   const EMOJI_LIST = [
@@ -194,9 +202,10 @@ export default function MessageContent({
     }
   }, [messages]);
 
-  const handleSend = async () => {
+  const handleSend = async (imageUrlToSend = null) => {
     const text = input.trim();
-    if (!text || !selected) return;
+    const imgUrl = imageUrlToSend ?? pendingImageUrl;
+    if ((!text && !imgUrl) || !selected) return;
     const stored =
       JSON.parse(localStorage.getItem("chatwave_user") || "null") || null;
     if (!stored?.id && !stored?._id) {
@@ -207,9 +216,11 @@ export default function MessageContent({
     const conversationId = String(selected.id);
     const socket = getChatSocket();
 
-    // Xóa input ngay khi gửi để UI cập nhật tức thì
     setInput("");
+    setPendingImageUrl(null);
     emitTypingStop();
+
+    const previewText = imgUrl ? (text || "Đã gửi ảnh") : text;
 
     socket.emit(
       "send_message",
@@ -219,19 +230,46 @@ export default function MessageContent({
         senderName: currentUserName,
         conversationName: selected.name,
         text: text || "",
+        imageUrl: imgUrl || null,
       },
       (res) => {
         if (!res?.ok) {
           toast.error(res?.error || "Không gửi được tin nhắn.");
+          if (imgUrl) setPendingImageUrl(imgUrl);
           return;
         }
         const timeStr = formatTime(new Date().toISOString());
-        const previewText = text;
         if (onConversationUpdate) {
           onConversationUpdate(conversationId, previewText, timeStr);
         }
       }
     );
+  };
+
+  const handleAttachFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isImage = file.type.startsWith("image/");
+    if (!isImage) {
+      toast.error("Chỉ hỗ trợ gửi ảnh (jpg, png, gif, webp).");
+      e.target.value = "";
+      return;
+    }
+    setUploadingImage(true);
+    uploadApi
+      .uploadImage(file)
+      .then((data) => {
+        const url = data?.url;
+        if (url) setPendingImageUrl(url);
+        else toast.error("Tải ảnh lên thất bại.");
+      })
+      .catch((err) => {
+        toast.error(err?.message || "Tải ảnh lên thất bại.");
+      })
+      .finally(() => {
+        setUploadingImage(false);
+        e.target.value = "";
+      });
   };
 
   const handleSubmit = (e) => {
@@ -270,8 +308,8 @@ export default function MessageContent({
     );
   };
 
-  const handleDeleteMessage = (msg) => {
-    if (!window.confirm("Thu hồi tin nhắn này?")) return;
+  const handleDeleteMessage = async (msg) => {
+    if (!(await confirm("Thu hồi tin nhắn này?"))) return;
     const socket = getChatSocket();
     socket.emit(
       "delete_message",
@@ -329,12 +367,9 @@ export default function MessageContent({
   };
 
   const renderMessageBody = (msg) => {
-    if (!msg.text) return null;
     const meta = parsePostShareMeta(msg.text);
-    if (!meta) {
-      return <p className="text-sm whitespace-pre-wrap">{msg.text}</p>;
-    }
-    return (
+    if (meta) {
+      return (
       <div className="space-y-2">
         {meta.imageUrl && (
           <div className="mb-1 overflow-hidden rounded-xl border border-white/60 bg-white/70">
@@ -358,6 +393,25 @@ export default function MessageContent({
         </button>
       </div>
     );
+    }
+    if (!msg.text && !msg.imageUrl) return null;
+    return (
+      <div className="space-y-1">
+        {msg.imageUrl && (
+          <div className="overflow-hidden rounded-xl border border-white/60 bg-white/70 max-w-full">
+            <img
+              src={msg.imageUrl}
+              alt=""
+              className="max-w-full max-h-64 object-contain cursor-pointer"
+              onClick={() => window.open(msg.imageUrl, "_blank")}
+            />
+          </div>
+        )}
+        {msg.text ? (
+          <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+        ) : null}
+      </div>
+    );
   };
 
   return (
@@ -367,8 +421,12 @@ export default function MessageContent({
         <div className="flex-1 flex flex-col">
           {/* Header cuộc trò chuyện */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-[#FFF7F0]">
-            <div className="w-10 h-10 rounded-full bg-[#FED7AA] flex items-center justify-center text-sm font-semibold text-[#C2410C]">
-              {selected.name.charAt(0)}
+            <div className="w-10 h-10 rounded-full bg-[#FED7AA] flex items-center justify-center text-sm font-semibold text-[#C2410C] overflow-hidden shrink-0">
+              {selected.avatar ? (
+                <img src={selected.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                (selected.name?.charAt(0) || "U").toUpperCase()
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-900 truncate">
@@ -384,8 +442,8 @@ export default function MessageContent({
               {selected.isChatGroup && onLeaveGroup && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (window.confirm("Rời nhóm chat này?")) onLeaveGroup(selected);
+                  onClick={async () => {
+                    if (await confirm("Rời nhóm chat này?")) onLeaveGroup(selected);
                   }}
                   title="Rời nhóm"
                   className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center text-red-600 hover:bg-red-100 transition text-xs"
@@ -529,8 +587,37 @@ export default function MessageContent({
           {/* Ô nhập tin nhắn */}
           <form
             className="p-4 border-t border-gray-100"
-            onSubmit={handleSubmit}
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
           >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+              onChange={handleAttachFile}
+            />
+            {pendingImageUrl && (
+              <div className="mb-2 flex items-start gap-2">
+                <div className="relative">
+                  <img
+                    src={pendingImageUrl}
+                    alt="Ảnh đính kèm"
+                    className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPendingImageUrl(null)}
+                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-800 text-white flex items-center justify-center hover:bg-gray-700"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">Ảnh đính kèm (có thể thêm nội dung)</p>
+              </div>
+            )}
             <div className="relative">
             {showEmojiPicker && (
               <div
@@ -554,6 +641,15 @@ export default function MessageContent({
             <div className="flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2">
               <button
                 type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImage}
+                title="Gửi ảnh"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 hover:text-[#FA8DAE] transition disabled:opacity-50"
+              >
+                <ImagePlus className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
                 data-emoji-trigger
                 onClick={() => setShowEmojiPicker((prev) => !prev)}
                 title="Emoji"
@@ -572,6 +668,7 @@ export default function MessageContent({
               />
               <button
                 type="submit"
+                disabled={!input.trim() && !pendingImageUrl}
                 className="w-9 h-9 rounded-full bg-[#F9C96D] flex items-center justify-center text-gray-800 hover:bg-[#F7B944] transition disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
@@ -636,8 +733,12 @@ export default function MessageContent({
       {showInfo && selected && (
         <aside className="hidden md:flex w-80 border-l border-gray-100 bg-white text-gray-900 flex-col">
           <div className="px-5 py-6 border-b border-gray-100 flex flex-col items-center text-center">
-            <div className="w-20 h-20 rounded-full bg-[#FED7AA] flex items-center justify-center text-2xl font-semibold text-[#C2410C] mb-3">
-              {selected.name?.charAt(0) || "U"}
+            <div className="w-20 h-20 rounded-full bg-[#FED7AA] flex items-center justify-center text-2xl font-semibold text-[#C2410C] mb-3 overflow-hidden">
+              {selected.avatar ? (
+                <img src={selected.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                (selected.name?.charAt(0) || "U").toUpperCase()
+              )}
             </div>
             <p className="font-semibold text-sm truncate max-w-full">
               {selected.name}

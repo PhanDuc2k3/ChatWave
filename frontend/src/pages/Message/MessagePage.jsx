@@ -88,6 +88,17 @@ export default function MessagePage() {
     fetchGroups();
   }, []);
 
+  // Join tất cả conversation rooms để nhận new_message realtime cho list
+  useEffect(() => {
+    const ids = [
+      ...friends.map((f) => f.id),
+      ...groups.map((g) => g.id),
+    ].filter(Boolean);
+    if (ids.length === 0) return;
+    const socket = getChatSocket();
+    socket.emit("join_conversations", { conversationIds: ids });
+  }, [friends, groups]);
+
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
@@ -98,17 +109,27 @@ export default function MessagePage() {
     const handleNewMessage = (msg) => {
       if (!msg || msg.senderId === String(currentUserId)) return;
       const cid = String(msg.conversationId);
-      if (selectedChatRef.current && String(selectedChatRef.current.id) === cid) return;
-      const incUnread = (setter) => {
+      const isViewing = selectedChatRef.current && String(selectedChatRef.current.id) === cid;
+      const lastText = msg.imageUrl ? "[Ảnh]" : (msg.text || "").slice(0, 80);
+      const lastTime = msg.createdAt
+        ? new Date(msg.createdAt).toLocaleDateString("vi-VN")
+        : new Date().toLocaleDateString("vi-VN");
+      const updater = (setter, incUnread) => {
         setter((prev) =>
           prev.map((item) => {
             if (String(item.id) !== cid) return item;
-            return { ...item, unreadCount: (item.unreadCount || 0) + 1 };
+            return {
+              ...item,
+              unreadCount: incUnread ? (item.unreadCount || 0) + 1 : item.unreadCount,
+              message: lastText || item.message,
+              lastActive: lastTime,
+            };
           })
         );
       };
-      incUnread(setGroups);
-      incUnread(setFriends);
+      updater(setGroups, !isViewing);
+      updater(setFriends, !isViewing);
+      // Toast hiển thị từ MainLayout (global) khi ở mọi trang
     };
     socket.on("new_message", handleNewMessage);
     return () => socket.off("new_message", handleNewMessage);

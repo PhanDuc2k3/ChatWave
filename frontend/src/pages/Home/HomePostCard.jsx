@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import { Heart, MessageCircle, Share2, Pencil } from "lucide-react";
 import { uploadApi } from "../../api/uploadApi";
 
@@ -22,7 +22,20 @@ export default function HomePostCard({
   const [editImageFile, setEditImageFile] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const fn = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, [menuOpen]);
 
   const isAuthor = useMemo(() => {
     try {
@@ -55,6 +68,7 @@ export default function HomePostCard({
           .toUpperCase()
       : "U";
 
+  const currentUserId = currentUser?.id || currentUser?._id;
   const hasLiked = !!post.isLiked;
   const isGuest = !currentUser;
 
@@ -166,19 +180,22 @@ export default function HomePostCard({
           </p>
         </div>
         {(onDelete || (onEdit && isAuthor) || onToggleSave) && (
-          <div className="relative group">
+          <div className="relative" ref={menuRef}>
             <button
               type="button"
+              onClick={() => setMenuOpen((v) => !v)}
               className="text-gray-400 hover:text-gray-600 text-2xl px-2"
               aria-label="Tùy chọn"
             >
               •••
             </button>
-            <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg py-1 z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition min-w-[190px]">
+            {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg py-1 z-10 min-w-[190px]">
               {onEdit && isAuthor && (
                 <button
                   type="button"
                   onClick={() => {
+                    setMenuOpen(false);
                     setEditText(post.text || "");
                     setEditImageUrl(post.imageUrl || "");
                     setShowEdit(true);
@@ -191,7 +208,10 @@ export default function HomePostCard({
               {onDelete && isAuthor && (
                 <button
                   type="button"
-                  onClick={() => onDelete(post.id || post._id)}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDelete(post.id || post._id);
+                  }}
                   className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 whitespace-nowrap"
                 >
                   Gỡ bài viết
@@ -200,13 +220,17 @@ export default function HomePostCard({
               {onToggleSave && (
                 <button
                   type="button"
-                  onClick={() => onToggleSave(post)}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onToggleSave(post);
+                  }}
                   className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap"
                 >
                   {saveLabel}
                 </button>
               )}
             </div>
+            )}
           </div>
         )}
       </header>
@@ -432,19 +456,25 @@ export default function HomePostCard({
         <div className="mt-3 border-t border-dashed border-gray-200 pt-3 space-y-2">
           <p className="text-sm font-semibold text-gray-800">{post.poll.question}</p>
           <div className="space-y-1">
-            {post.poll.options.map((opt, idx) => (
+            {post.poll.options.map((opt, idx) => {
+              const votedBy = opt.votedBy || [];
+              const isVoted = currentUserId && votedBy.includes(String(currentUserId));
+              return (
               <button
                 key={idx}
                 type="button"
                 onClick={() => onVotePoll && onVotePoll(post.id || post._id, idx)}
-                className="w-full flex items-center justify-between px-3 py-1.5 rounded-full border border-gray-200 text-xs md:text-sm text-gray-700 hover:bg-[#FFF7F0]"
+                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full border text-xs md:text-sm hover:bg-[#FFF7F0] ${
+                  isVoted ? "border-[#FA8DAE] bg-[#FFF7F0] text-[#FA8DAE] font-medium" : "border-gray-200 text-gray-700"
+                }`}
               >
                 <span className="truncate">{opt.text}</span>
-                <span className="ml-2 text-[11px] text-gray-500">
-                  {opt.votes || 0} phiếu
+                <span className={`ml-2 text-[11px] ${isVoted ? "text-[#FA8DAE]" : "text-gray-500"}`}>
+                  {opt.votes || votedBy.length || 0} phiếu
                 </span>
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

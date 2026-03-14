@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   ClipboardList,
   Users,
@@ -7,27 +7,31 @@ import {
   CheckCircle2,
   Circle,
   Loader2,
+  XCircle,
 } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
-import { taskApi } from "../../api/taskApi";
+import { useTasks } from "../../hooks/useTasks";
 import TaskDetail from "./TaskDetail";
 
 const STATUS_LABELS = {
   pending: "Chờ làm",
   in_progress: "Đang làm",
   done: "Đã xong",
+  cancelled: "Đã hủy",
 };
 
 const STATUS_STYLES = {
   pending: "bg-amber-50 text-amber-700 border-amber-200",
   in_progress: "bg-blue-50 text-blue-700 border-blue-200",
   done: "bg-green-50 text-green-700 border-green-200",
+  cancelled: "bg-gray-100 text-gray-600 border-gray-300",
 };
 
 const STATUS_ICONS = {
   pending: Circle,
   in_progress: Loader2,
   done: CheckCircle2,
+  cancelled: XCircle,
 };
 
 const PRIORITY_STYLES = {
@@ -130,109 +134,20 @@ function TaskCard({ task, onClick, isSelected }) {
   );
 }
 
-function mapTaskFromApi(t) {
-  return {
-    id: t.id || t._id,
-    title: t.title,
-    assigner: t.assignerName,
-    assignerId: t.assignerId,
-    assigneeId: t.assigneeId,
-    assignee: t.assigneeName || "Chưa giao",
-    reviewer: t.reviewerName || null,
-    source: t.source || "friend",
-    sourceName: t.sourceName,
-    dueDate: t.dueDate || "—",
-    status: t.status || "pending",
-    priority: t.priority || "medium",
-    description: t.description
-      ? { what: t.description }
-      : null,
-    expectedResults: t.expectedResults || [],
-    estimatedEffort: t.estimatedEffort || null,
-    acceptanceCriteria: t.acceptanceCriteria || [],
-    deliverables: t.deliverables || [],
-    references: t.references || [],
-    risksNotes: t.risksNotes || null,
-    completionNote: t.completionNote || null,
-    completedAt: t.completedAt || null,
-    submissionDeliverables: t.submissionDeliverables || [],
-    ...t,
-  };
-}
-
 export default function TasksPage() {
-  const [filter, setFilter] = useState("all"); // all | mine | group | friend
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
-
-  const currentUserId = React.useMemo(() => {
-    try {
-      const u = JSON.parse(localStorage.getItem("chatwave_user") || "null");
-      return u?.id || u?._id;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        setLoading(true);
-        const data = filter === "mine" && currentUserId
-          ? await taskApi.getByAssignee(currentUserId)
-          : await taskApi.getAll();
-        const mapped = (data || []).map(mapTaskFromApi);
-        setTasks(mapped);
-      } catch {
-        setTasks([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
-  }, [filter, currentUserId]);
-
-  const selectedTask = selectedTaskId != null ? tasks.find((t) => t.id === selectedTaskId) : null;
-
-  const handleUpdateTaskStatus = async (taskId, status) => {
-    try {
-      const updated = await taskApi.updateStatus(taskId, status);
-      if (updated) {
-        const mapped = mapTaskFromApi(updated);
-        setTasks((prev) =>
-          prev.map((t) => (t.id === taskId || t.id === mapped.id ? { ...t, ...mapped } : t))
-        );
-      }
-    } catch {
-      // keep local update as fallback
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status } : t))
-      );
-    }
-  };
-
-  const handleTaskDeleted = (taskId) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-    setSelectedTaskId(null);
-  };
-
-  const handleTaskUpdated = (updatedTaskFromApi) => {
-    if (!updatedTaskFromApi) return;
-    const mapped = mapTaskFromApi(updatedTaskFromApi);
-    const id = mapped.id || updatedTaskFromApi._id || updatedTaskFromApi.id;
-    setTasks((prev) => prev.map((t) => (t.id === id ? mapped : t)));
-    setSelectedTaskId(id);
-  };
-
-  const handleTaskSubmitted = (updatedTaskFromApi) => {
-    if (!updatedTaskFromApi) return;
-    const mapped = mapTaskFromApi(updatedTaskFromApi);
-    const id = mapped.id || updatedTaskFromApi._id || updatedTaskFromApi.id;
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? mapped : t))
-    );
-  };
+  const {
+    tasks,
+    loading,
+    filter,
+    setFilter,
+    selectedTask,
+    selectedTaskId,
+    setSelectedTaskId,
+    updateTaskStatus: handleUpdateTaskStatus,
+    removeTask: handleTaskDeleted,
+    updateTask: handleTaskUpdated,
+    submitTask: handleTaskSubmitted,
+  } = useTasks();
 
   const tasksFiltered = tasks.filter((t) => {
     if (filter === "mine") return true;
@@ -248,6 +163,7 @@ export default function TasksPage() {
     fromFriend: tasks.filter((t) => t.source === "friend").length,
     pending: tasks.filter((t) => t.status === "pending").length,
     done: tasks.filter((t) => t.status === "done").length,
+    cancelled: tasks.filter((t) => t.status === "cancelled").length,
   };
 
   const headerContent = (
@@ -275,6 +191,10 @@ export default function TasksPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-2 shadow-sm">
               <p className="text-xl font-bold text-amber-600">{stats.pending}</p>
               <p className="text-[10px] text-gray-500">Chờ làm</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-2 shadow-sm">
+              <p className="text-xl font-bold text-gray-500">{stats.cancelled}</p>
+              <p className="text-[10px] text-gray-500">Đã hủy</p>
             </div>
           </div>
 
@@ -344,11 +264,12 @@ export default function TasksPage() {
             </div>
 
             <div className="flex-1 min-h-0 overflow-auto">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[
                   { key: "pending", title: "To Do" },
                   { key: "in_progress", title: "In Progress" },
                   { key: "done", title: "Done" },
+                  { key: "cancelled", title: "Đã hủy" },
                 ].map(({ key, title }) => {
                   const columnTasks = tasksFiltered.filter(
                     (t) => t.status === key

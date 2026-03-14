@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { authApi } from "../api/authApi";
-import logo from "../assets/logo-web.png";
-import bgSocial from "../assets/bglogin.png";
+import { authApi } from "../../api/authApi";
+import logo from "../../assets/logo-web.png";
+import bgSocial from "../../assets/bglogin.png";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");

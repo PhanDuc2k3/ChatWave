@@ -1,8 +1,15 @@
+import axios from "axios";
 import axiosClient from "./axiosClient";
+
+const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api/v1";
 
 export const authApi = {
   login(credentials) {
     return axiosClient.post("/auth/login", credentials);
+  },
+
+  refresh(refreshToken) {
+    return axios.post(`${baseURL}/auth/refresh`, { refreshToken }).then((r) => r.data);
   },
 
   register(payload) {

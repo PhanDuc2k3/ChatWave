@@ -1,19 +1,29 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Users } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { groupApi } from "../../api/groupApi";
+import { useGroups } from "../../hooks/useGroups";
 import toast from "react-hot-toast";
 
 export default function GroupsPage() {
   const navigate = useNavigate();
-  const [groups, setGroups] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [visibility, setVisibility] = useState("public");
   const [creating, setCreating] = useState(false);
+
+  const handleFetchError = useCallback((err) => {
+    toast.error(err?.message || "Không tải được danh sách nhóm.");
+  }, []);
+
+  const {
+    groups,
+    setGroups,
+    loading,
+    currentUserId,
+  } = useGroups({ onError: handleFetchError });
 
   const currentUser = React.useMemo(() => {
     try {
@@ -22,23 +32,7 @@ export default function GroupsPage() {
       return null;
     }
   }, []);
-  const currentUserId = currentUser?.id || currentUser?._id;
   const ownerName = currentUser?.username || currentUser?.email || currentUser?.name || "Bạn";
-
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        setLoading(true);
-        const data = await groupApi.getDiscoverable(currentUserId);
-        setGroups(data || []);
-      } catch (err) {
-        toast.error(err?.message || "Không tải được danh sách nhóm.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
-  }, [currentUserId]);
 
   const handleCreate = async () => {
     const name = newName.trim();

@@ -6,6 +6,7 @@ import { chatbotSessionApi } from "../../api/chatbotSessionApi";
 import { friendApi } from "../../api/friendApi";
 import CreateTasksFromAiModal from "./CreateTasksFromAiModal";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../context/ConfirmContext";
 
 const GREETING = {
   role: "assistant",
@@ -13,6 +14,7 @@ const GREETING = {
 };
 
 export default function ChatbotPage() {
+  const { confirm } = useConfirm();
   const [sessions, setSessions] = useState([]);
   const [currentSession, setCurrentSession] = useState(null);
   const [messages, setMessages] = useState([GREETING]);
@@ -110,7 +112,7 @@ export default function ChatbotPage() {
 
   const handleDeleteSession = async (e, id) => {
     e.stopPropagation();
-    if (!window.confirm("Xóa cuộc hội thoại này?")) return;
+    if (!(await confirm("Xóa cuộc hội thoại này?"))) return;
     try {
       await chatbotSessionApi.deleteSession(id);
       const getId = (s) => s?.id || s?._id;

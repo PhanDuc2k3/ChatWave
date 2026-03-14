@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { User, MapPin, Briefcase, GraduationCap, Calendar, MessageCircle, UserPlus, UserX, Pencil, Ban, ImagePlus, X } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
@@ -9,101 +9,43 @@ import { friendApi } from "../../api/friendApi";
 import { postApi } from "../../api/postApi";
 import { authApi } from "../../api/authApi";
 import { uploadApi } from "../../api/uploadApi";
+import { useProfile } from "../../hooks/useProfile";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../context/ConfirmContext";
 
 export default function ProfilePage() {
   const { id: profileIdParam } = useParams();
+  const { confirm } = useConfirm();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("all"); // all | about | posts | friends | photos
-  const [profile, setProfile] = useState(mockProfile);
-  const [loading, setLoading] = useState(true);
-  const [isFriend, setIsFriend] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editBio, setEditBio] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [clearAvatar, setClearAvatar] = useState(false);
-  const [userPosts, setUserPosts] = useState([]);
-  const [userFriends, setUserFriends] = useState([]);
+
+  const {
+    profile,
+    setProfile,
+    loading,
+    isFriend,
+    setIsFriend,
+    userPosts,
+    setUserPosts,
+    userFriends,
+    currentUserId,
+    profileUserId,
+    isMe,
+    updateProfile,
+  } = useProfile(profileIdParam, mockProfile, {
+    onError: () => toast.error("Không tải được thông tin hồ sơ. Hiển thị dữ liệu mặc định."),
+  });
 
   const storedUser =
     JSON.parse(localStorage.getItem("chatwave_user") || "null") || null;
-  const currentUserId = storedUser?.id || storedUser?._id || null;
   const currentUserName =
     storedUser?.username || storedUser?.email || storedUser?.name || "Bạn";
-
-  const profileUserId = profileIdParam || currentUserId;
-  const isMe =
-    !profileIdParam ||
-    !currentUserId ||
-    String(profileUserId) === String(currentUserId);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchProfile = async () => {
-      try {
-        if (!profileUserId) {
-          setProfile(mockProfile);
-          setLoading(false);
-          return;
-        }
-
-        const [fresh, posts, friends] = await Promise.all([
-          userApi.getById(profileUserId),
-          postApi.getByAuthor(profileUserId),
-          friendApi.getFriends(profileUserId),
-        ]);
-
-        if (isMounted && fresh) {
-          setProfile((prev) => ({
-            ...prev,
-            name: fresh.username || fresh.name || prev.name,
-            username: fresh.email || prev.username,
-            bio: fresh.bio ?? prev.bio,
-            avatar: fresh.avatar ?? prev.avatar,
-            stats: {
-              posts: posts?.length || 0,
-              friends: friends?.length || 0,
-              photos: (posts || []).filter((p) => p.imageUrl).length,
-            },
-          }));
-          setUserPosts(posts || []);
-          setUserFriends(friends || []);
-        }
-      } catch (err) {
-        if (isMounted) {
-          toast.error("Không tải được thông tin hồ sơ. Hiển thị dữ liệu mặc định.");
-          setProfile(mockProfile);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    const fetchFriendState = async () => {
-      if (!currentUserId || !profileUserId || isMe) return;
-      try {
-        const friends = await friendApi.getFriends(currentUserId);
-        const found = (friends || []).some(
-          (f) => String(f.id) === String(profileUserId)
-        );
-        if (isMounted) setIsFriend(found);
-      } catch {
-        // ignore friend state error
-      }
-    };
-
-    fetchProfile();
-    fetchFriendState();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const { name, username, bio, stats, info } = profile;
   const initial = name.charAt(0);
@@ -214,7 +156,7 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!window.confirm("Chặn người dùng này?")) return;
+                        if (!(await confirm("Chặn người dùng này?"))) return;
                         try {
                           await friendApi.block(currentUserId, profileUserId);
                           toast.success("Đã chặn người dùng.");
@@ -350,7 +292,7 @@ export default function ProfilePage() {
                   }}
                   onShare={null}
                   onDelete={isMe ? async (id) => {
-                    if (!window.confirm("Bạn có chắc muốn gỡ bài viết này?")) return;
+                    if (!(await confirm("Bạn có chắc muốn gỡ bài viết này?"))) return;
                     try {
                       await postApi.remove(id);
                       setUserPosts((prev) =>
@@ -521,7 +463,6 @@ export default function ProfilePage() {
             )}
           </div>
         ) : (
-          /* Photos tab */
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-4">
             <h3 className="text-sm font-semibold text-gray-800 mb-2">
               Ảnh từ bài viết
