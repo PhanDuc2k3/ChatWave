@@ -89,8 +89,8 @@ export default function FriendsPage() {
 
   return (
     <MainLayout headerContent={headerContent}>
-      <div className="w-full h-full bg-[#F3F6FB] flex gap-4 px-3 md:px-6 py-4">
-        {/* Friends section sidebar */}
+      <div className="w-full h-full bg-[#F3F6FB] flex flex-col md:flex-row gap-4 px-3 md:px-6 py-4">
+        {/* Friends section sidebar (desktop) */}
         <aside className="hidden md:flex w-56 flex-col bg-white rounded-2xl border border-gray-200 py-3 shadow-sm">
           <h3 className="px-4 mb-2 text-sm font-semibold text-gray-800">
             Bạn bè
@@ -135,6 +135,32 @@ export default function FriendsPage() {
             </button>
           </nav>
         </aside>
+
+        {/* Tabs cho mobile */}
+        <div className="md:hidden w-full bg-white rounded-2xl border border-gray-200 px-3 py-2 shadow-sm">
+          <div className="flex items-center justify-between gap-1 text-xs">
+            <button
+              type="button"
+              className="flex-1 px-2 py-1.5 rounded-full bg-[#FFF7F0] text-[#FA8DAE] font-semibold"
+            >
+              Trang chủ
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/friends/requests")}
+              className="flex-1 px-2 py-1.5 rounded-full text-gray-600 hover:bg-gray-50"
+            >
+              Lời mời
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/friends/all")}
+              className="flex-1 px-2 py-1.5 rounded-full text-gray-600 hover:bg-gray-50"
+            >
+              Tất cả bạn bè
+            </button>
+          </div>
+        </div>
 
         {/* Main content: giống layout task: khối trắng có padding */}
         <section className="flex-1 min-w-0 flex flex-col">

@@ -24,9 +24,14 @@ export default function HomeCreatePost({ onCreatePost }) {
       return null;
     }
   }, []);
-  const currentInitial = currentUser?.username || currentUser?.email || currentUser?.name
-    ? String(currentUser.username || currentUser.email || currentUser.name).charAt(0).toUpperCase()
-    : "U";
+  const currentInitial =
+    currentUser?.username || currentUser?.email || currentUser?.name
+      ? String(
+          currentUser.username || currentUser.email || currentUser.name
+        )
+          .charAt(0)
+          .toUpperCase()
+      : "U";
 
   const scheduledLabel = useMemo(() => {
     if (!scheduledAt) return "";
@@ -152,12 +157,16 @@ export default function HomeCreatePost({ onCreatePost }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full bg-white rounded-2xl shadow-sm border border-[#E2E8F0] px-4 py-3 md:px-5 md:py-4 mb-4"
+      className="w-full bg-white rounded-2xl shadow-sm border border-[#E2E8F0] px-3 py-3 md:px-5 md:py-4 mb-4"
     >
-      <div className="flex items-start gap-4">
-        <div className="w-11 h-11 rounded-full overflow-hidden bg-[#4F8EF7] flex items-center justify-center text-lg font-semibold text-white shrink-0">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 sm:gap-4">
+        <div className="w-10 h-10 md:w-11 md:h-11 rounded-full overflow-hidden bg-[#4F8EF7] flex items-center justify-center text-base md:text-lg font-semibold text-white shrink-0">
           {currentUser?.avatar ? (
-            <img src={currentUser.avatar} alt="" className="w-full h-full object-cover" />
+            <img
+              src={currentUser.avatar}
+              alt=""
+              className="w-full h-full object-cover"
+            />
           ) : (
             currentInitial
           )}
@@ -171,7 +180,7 @@ export default function HomeCreatePost({ onCreatePost }) {
             onChange={(e) => setText(e.target.value)}
           />
 
-          <div className="flex flex-row items-center justify-between gap-2 pt-1">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
             <input
               ref={fileInputRef}
               type="file"
@@ -180,7 +189,8 @@ export default function HomeCreatePost({ onCreatePost }) {
               onChange={handleImageSelect}
             />
             <div className="flex items-center justify-between gap-2 w-full">
-              <div className="flex items-center gap-3 text-xs md:text-sm text-gray-500">
+              {/* Hàng icon công cụ - luôn trên 1 hàng, scroll ngang nếu tràn trên mobile */}
+              <div className="flex flex-nowrap items-center gap-2 sm:gap-3 text-xs md:text-sm text-gray-500 overflow-x-auto no-scrollbar">
                 <button
                   type="button"
                   onClick={() => {
@@ -193,18 +203,22 @@ export default function HomeCreatePost({ onCreatePost }) {
                     fileInputRef.current?.click();
                   }}
                   disabled={uploading}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition disabled:opacity-50 ${
-                    activeTool === "image" ? "bg-[#F1F5F9]" : "hover:bg-[#F1F5F9]"
+                  className={`w-9 h-9 md:w-auto md:px-3 md:py-1.5 rounded-full flex items-center justify-center gap-1.5 transition disabled:opacity-50 ${
+                    activeTool === "image"
+                      ? "bg-[#F1F5F9]"
+                      : "hover:bg-[#F1F5F9]"
                   }`}
                 >
                   <Image className="w-5 h-5 text-[#F97316]" />
-                  <span className="hidden sm:inline">Ảnh/Video</span>
+                  <span className="hidden md:inline">Ảnh/Video</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     // Chỉ bật cảm xúc, tắt ảnh / poll / lịch
-                    setActiveTool(activeTool === "feeling" ? null : "feeling");
+                    setActiveTool(
+                      activeTool === "feeling" ? null : "feeling"
+                    );
                     setImageFile(null);
                     if (imagePreview) URL.revokeObjectURL(imagePreview);
                     setImagePreview(null);
@@ -213,12 +227,14 @@ export default function HomeCreatePost({ onCreatePost }) {
                     setPollOptions(["", ""]);
                     setScheduledAt("");
                   }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition ${
-                    activeTool === "feeling" ? "bg-[#F1F5F9]" : "hover:bg-[#F1F5F9]"
+                  className={`w-9 h-9 md:w-auto md:px-3 md:py-1.5 rounded-full flex items-center justify-center gap-1.5 transition ${
+                    activeTool === "feeling"
+                      ? "bg-[#F1F5F9]"
+                      : "hover:bg-[#F1F5F9]"
                   }`}
                 >
                   <Smile className="w-5 h-5 text-[#F97316]" />
-                  <span className="hidden sm:inline">
+                  <span className="hidden md:inline">
                     {feeling ? `Cảm xúc: ${feeling}` : "Cảm xúc"}
                   </span>
                 </button>
@@ -240,12 +256,14 @@ export default function HomeCreatePost({ onCreatePost }) {
                       setScheduledAt("");
                     }
                   }}
-                  className={`hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full transition ${
-                    activeTool === "poll" ? "bg-[#F1F5F9]" : "hover:bg-[#F1F5F9]"
+                  className={`w-9 h-9 md:w-auto md:px-3 md:py-1.5 rounded-full flex items-center justify-center gap-1.5 transition ${
+                    activeTool === "poll"
+                      ? "bg-[#F1F5F9]"
+                      : "hover:bg-[#F1F5F9]"
                   }`}
                 >
                   <BarChart2 className="w-5 h-5 text-[#22C55E]" />
-                  <span>Khảo sát</span>
+                  <span className="hidden md:inline">Khảo sát</span>
                 </button>
                 <button
                   type="button"
@@ -257,7 +275,9 @@ export default function HomeCreatePost({ onCreatePost }) {
                       const now = new Date();
                       // Lấy thời điểm hiện tại theo UTC rồi cộng thêm 7 giờ (GMT+7) và 10 phút
                       const gmt7Plus10 = new Date(
-                        now.getTime() + 7 * 60 * 60 * 1000 + 10 * 60 * 1000
+                        now.getTime() +
+                          7 * 60 * 60 * 1000 +
+                          10 * 60 * 1000
                       );
                       const year = gmt7Plus10.getUTCFullYear();
                       const month = String(
@@ -286,14 +306,14 @@ export default function HomeCreatePost({ onCreatePost }) {
                       setPollOptions(["", ""]);
                     }
                   }}
-                  className={`hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full transition ${
+                  className={`w-9 h-9 md:w-auto md:px-3 md:py-1.5 rounded-full flex items-center justify-center gap-1.5 transition ${
                     activeTool === "schedule"
                       ? "bg-[#F1F5F9]"
                       : "hover:bg-[#F1F5F9]"
                   }`}
                 >
                   <CalendarClock className="w-5 h-5 text-[#EAB308]" />
-                  <span>Lên lịch</span>
+                  <span className="hidden md:inline">Lên lịch</span>
                 </button>
                 {imagePreview && (
                   <button
@@ -337,7 +357,9 @@ export default function HomeCreatePost({ onCreatePost }) {
                 <button
                   key={f}
                   type="button"
-                  onClick={() => setFeeling((prev) => (prev === f ? "" : f))}
+                  onClick={() =>
+                    setFeeling((prev) => (prev === f ? "" : f))
+                  }
                   className={`px-2 py-1 rounded-full border ${
                     feeling === f
                       ? "bg-[#FA8DAE]/10 border-[#FA8DAE] text-[#BE185D]"

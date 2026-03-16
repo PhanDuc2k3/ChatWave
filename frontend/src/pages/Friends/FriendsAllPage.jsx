@@ -166,7 +166,34 @@ export default function FriendsAllPage() {
       headerContent={headerContent}
       showSearch={false}
     >
-      <div className="w-full h-full flex flex-col md:flex-row gap-4">
+      <div className="w-full h-full flex flex-col gap-4">
+        {/* Tabs cho mobile */}
+        <div className="md:hidden w-full bg-white rounded-2xl border border-gray-200 px-3 py-2 shadow-sm">
+          <div className="flex items-center justify-between gap-1 text-xs">
+            <button
+              type="button"
+              onClick={() => navigate("/friends")}
+              className="flex-1 px-2 py-1.5 rounded-full text-gray-600 hover:bg-gray-50"
+            >
+              Trang chủ
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/friends/requests")}
+              className="flex-1 px-2 py-1.5 rounded-full text-gray-600 hover:bg-gray-50"
+            >
+              Lời mời
+            </button>
+            <button
+              type="button"
+              className="flex-1 px-2 py-1.5 rounded-full bg-[#FFF7F0] text-[#FA8DAE] font-semibold"
+            >
+              Tất cả bạn bè
+            </button>
+          </div>
+        </div>
+
+        <div className="w-full h-full flex flex-col md:flex-row gap-4">
         {/* Left column: friends list */}
         <aside className="w-full md:w-1/3 h-full bg-white text-gray-900 rounded-2xl border border-gray-200 p-3 md:p-4 flex flex-col space-y-3">
           <div className="flex items-center justify-between">
@@ -201,7 +228,14 @@ export default function FriendsAllPage() {
                 <button
                   key={friend.id}
                   type="button"
-                  onClick={() => setSelectedFriendId(friend.id)}
+                  onClick={() => {
+                    // Trên mobile: đi thẳng tới trang cá nhân; desktop: chỉ chọn ở panel phải
+                    if (window.innerWidth < 768) {
+                      navigate(`/profile/${friend.id}`);
+                    } else {
+                      setSelectedFriendId(friend.id);
+                    }
+                  }}
                   className={`w-full flex items-center gap-3 rounded-xl px-2 py-2 text-left ${
                     isActive ? "bg-[#FFF7F0]" : "hover:bg-gray-50"
                   }`}
@@ -353,6 +387,7 @@ export default function FriendsAllPage() {
             </div>
           )}
         </section>
+      </div>
       </div>
     </MainLayout>
   );

@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import {
+  Home as HomeIcon,
+  MessageCircle,
+  Users,
+  ClipboardList,
+  Bot,
+} from "lucide-react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import { getChatSocket } from "../socket/chatSocket";
@@ -129,12 +135,78 @@ export default function MainLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF9F2]">
+    <div className="min-h-screen bg-[#FFF9F2] pb-14 md:pb-0">
       {/* HEADER - cố định trên cùng */}
       <Header />
 
-      {/* SIDEBAR - cố định bên trái, dưới header */}
+      {/* SIDEBAR - cố định bên trái, dưới header (desktop / tablet) */}
       <Sidebar activeNav={activeNav} setActiveNav={handleSetActiveNav} />
+
+      {/* BOTTOM NAV - cho mobile (ẩn trên md) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 border-t border-gray-200 backdrop-blur">
+        <div className="max-w-4xl mx-auto px-4 py-1.5 flex items-center justify-between gap-1 text-xs">
+          <button
+            type="button"
+            onClick={() => handleSetActiveNav("home")}
+            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl ${
+              activeNav === "home"
+                ? "text-[#FA8DAE] bg-[#FFF1F2]"
+                : "text-gray-500"
+            }`}
+          >
+            <HomeIcon className="w-5 h-5 mb-0.5" />
+            <span>Trang chủ</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetActiveNav("chat")}
+            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl ${
+              activeNav === "chat"
+                ? "text-[#FA8DAE] bg-[#FFF1F2]"
+                : "text-gray-500"
+            }`}
+          >
+            <MessageCircle className="w-5 h-5 mb-0.5" />
+            <span>Nhắn tin</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetActiveNav("friends")}
+            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl ${
+              activeNav === "friends"
+                ? "text-[#FA8DAE] bg-[#FFF1F2]"
+                : "text-gray-500"
+            }`}
+          >
+            <Users className="w-5 h-5 mb-0.5" />
+            <span>Bạn bè</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetActiveNav("tasks")}
+            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl ${
+              activeNav === "tasks"
+                ? "text-[#FA8DAE] bg-[#FFF1F2]"
+                : "text-gray-500"
+            }`}
+          >
+            <ClipboardList className="w-5 h-5 mb-0.5" />
+            <span>Giao việc</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetActiveNav("chatbot")}
+            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl ${
+              activeNav === "chatbot"
+                ? "text-[#FA8DAE] bg-[#FFF1F2]"
+                : "text-gray-500"
+            }`}
+          >
+            <Bot className="w-5 h-5 mb-0.5" />
+            <span>Chatbot</span>
+          </button>
+        </div>
+      </nav>
 
       {/* MAIN CONTENT - đẩy xuống dưới header, sang phải sidebar */}
       <div className="pt-16 md:pt-20 sm:pl-16 lg:pl-20 h-screen overflow-hidden flex flex-col">

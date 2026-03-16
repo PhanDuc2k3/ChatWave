@@ -198,7 +198,7 @@ export default function TasksPage() {
             </div>
           </div>
 
-          <div className="shrink-0 flex gap-2">
+          <div className="shrink-0 flex flex-nowrap gap-2">
             {[
               { key: "all", label: "Tất cả", icon: ClipboardList },
               { key: "mine", label: "Của tôi", icon: User },
@@ -209,7 +209,7 @@ export default function TasksPage() {
                 key={key}
                 type="button"
                 onClick={() => setFilter(key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition ${
+                className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-xl text-[11px] font-medium transition ${
                   filter === key
                     ? "bg-[#FA8DAE] text-white shadow-sm"
                     : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"

@@ -197,70 +197,163 @@ export default function MessagePage() {
     <MainLayout headerContent={headerContent}>
       <div className="w-full h-full">
         {hasConversations ? (
-          <div className="flex gap-4 h-full min-h-[400px]">
-            {/* Trái: danh sách người nhắn (30%) */}
-            <aside className="w-[30%] min-w-[220px] shrink-0 bg-white rounded-2xl border border-[#F5D9A6] p-3 overflow-hidden flex flex-col shadow-sm">
-              <div className="mb-3 shrink-0 flex items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-800">
-                    Tin nhắn
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    {listItems.length} cuộc trò chuyện
-                  </p>
+          <>
+            {/* MOBILE: list & chi tiết toàn màn hình, chuyển qua lại bằng state */}
+            <div className="flex md:hidden h-full min-h-[400px]">
+              {!selectedChat ? (
+                <div className="w-full bg-white rounded-2xl border border-[#F5D9A6] p-3 overflow-hidden flex flex-col shadow-sm">
+                  <div className="mb-3 shrink-0 flex items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-800">
+                        Tin nhắn
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {listItems.length} cuộc trò chuyện
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateGroup(true)}
+                      className="text-[11px] px-3 py-1 rounded-full bg-[#F97316] text-white hover:bg-[#EA580C] transition"
+                    >
+                      + Tạo nhóm
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    <MessageListSidebar
+                      items={listItems}
+                      sortOption={sortOption}
+                      selectedId={selectedChat?.id}
+                      onSelect={(chat) => {
+                        setSelectedChat(chat);
+                        if (chat) {
+                          const cid = String(chat.id);
+                          const markRead = (setter) =>
+                            setter((prev) =>
+                              prev.map((item) =>
+                                String(item.id) === cid
+                                  ? { ...item, unreadCount: 0 }
+                                  : item
+                              )
+                            );
+                          markRead(setFriends);
+                          markRead(setGroups);
+                        }
+                      }}
+                      showMembers={showMembers}
+                    />
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateGroup(true)}
-                  className="text-[11px] px-3 py-1 rounded-full bg-[#F97316] text-white hover:bg-[#EA580C] transition"
-                >
-                  + Tạo nhóm
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                <MessageListSidebar
-                  items={listItems}
-                  sortOption={sortOption}
-                  selectedId={selectedChat?.id}
-                  onSelect={(chat) => {
-                    setSelectedChat(chat);
-                    if (chat) {
-                      const cid = String(chat.id);
-                      const markRead = (setter) =>
-                        setter((prev) =>
-                          prev.map((item) =>
-                            String(item.id) === cid ? { ...item, unreadCount: 0 } : item
+              ) : (
+                <div className="w-full">
+                  <MessageContent
+                    selected={selectedChat}
+                    onConversationUpdate={handleConversationUpdate}
+                    onOpenCreateTask={() => setShowCreateTask(true)}
+                    onLeaveGroup={async (group) => {
+                      try {
+                        const gid =
+                          group.chatGroupId ||
+                          String(group.id).replace("group:", "");
+                        await chatGroupApi.leaveGroup(gid, currentUserId);
+                        setGroups((prev) =>
+                          prev.filter(
+                            (g) =>
+                              g.chatGroupId !== gid && g.id !== group.id
                           )
                         );
-                      markRead(setFriends);
-                      markRead(setGroups);
+                        setSelectedChat(null);
+                        toast.success("Đã rời nhóm.");
+                      } catch (err) {
+                        toast.error(
+                          err?.message || "Không rời nhóm được."
+                        );
+                      }
+                    }}
+                    showBackButton
+                    onBack={() => setSelectedChat(null)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* DESKTOP: layout 2 cột như cũ */}
+            <div className="hidden md:flex flex-row gap-4 h-full min-h-[400px]">
+              {/* Trái: danh sách người nhắn (30%) */}
+              <aside className="w-[30%] min-w-[220px] shrink-0 bg-white rounded-2xl border border-[#F5D9A6] p-3 overflow-hidden flex flex-col shadow-sm">
+                <div className="mb-3 shrink-0 flex items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-800">
+                      Tin nhắn
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {listItems.length} cuộc trò chuyện
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateGroup(true)}
+                    className="text-[11px] px-3 py-1 rounded-full bg-[#F97316] text-white hover:bg-[#EA580C] transition"
+                  >
+                    + Tạo nhóm
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <MessageListSidebar
+                    items={listItems}
+                    sortOption={sortOption}
+                    selectedId={selectedChat?.id}
+                    onSelect={(chat) => {
+                      setSelectedChat(chat);
+                      if (chat) {
+                        const cid = String(chat.id);
+                        const markRead = (setter) =>
+                          setter((prev) =>
+                            prev.map((item) =>
+                              String(item.id) === cid
+                                ? { ...item, unreadCount: 0 }
+                                : item
+                            )
+                          );
+                        markRead(setFriends);
+                        markRead(setGroups);
+                      }
+                    }}
+                    showMembers={showMembers}
+                  />
+                </div>
+              </aside>
+
+              {/* Phải: nội dung tin nhắn (70%) */}
+              <section className="flex-1 min-w-0 h-full">
+                <MessageContent
+                  selected={selectedChat}
+                  onConversationUpdate={handleConversationUpdate}
+                  onOpenCreateTask={() => setShowCreateTask(true)}
+                  onLeaveGroup={async (group) => {
+                    try {
+                      const gid =
+                        group.chatGroupId ||
+                        String(group.id).replace("group:", "");
+                      await chatGroupApi.leaveGroup(gid, currentUserId);
+                      setGroups((prev) =>
+                        prev.filter(
+                          (g) =>
+                            g.chatGroupId !== gid && g.id !== group.id
+                        )
+                      );
+                      setSelectedChat(null);
+                      toast.success("Đã rời nhóm.");
+                    } catch (err) {
+                      toast.error(
+                        err?.message || "Không rời nhóm được."
+                      );
                     }
                   }}
-                  showMembers={showMembers}
                 />
-              </div>
-            </aside>
-
-            {/* Phải: nội dung tin nhắn (70%) */}
-            <section className="flex-1 min-w-0 h-full">
-              <MessageContent
-                selected={selectedChat}
-                onConversationUpdate={handleConversationUpdate}
-                onOpenCreateTask={() => setShowCreateTask(true)}
-                onLeaveGroup={async (group) => {
-                  try {
-                    const gid = group.chatGroupId || String(group.id).replace("group:", "");
-                    await chatGroupApi.leaveGroup(gid, currentUserId);
-                    setGroups((prev) => prev.filter((g) => g.chatGroupId !== gid && g.id !== group.id));
-                    setSelectedChat(null);
-                    toast.success("Đã rời nhóm.");
-                  } catch (err) {
-                    toast.error(err?.message || "Không rời nhóm được.");
-                  }
-                }}
-              />
-            </section>
-          </div>
+              </section>
+            </div>
+          </>
         ) : (
           <MessageEmptyState
             slides={slides}

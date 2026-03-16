@@ -1,7 +1,9 @@
 import axios from "axios";
 
 const baseURL =
-  import.meta.env.VITE_CHATBOT_API_URL || "http://localhost:5003/api/v1";
+  (import.meta.env.MODE === "development" && "http://localhost:5003/api/v1") ||
+  import.meta.env.VITE_CHATBOT_API_URL ||
+  "http://localhost:5003/api/v1";
 
 const chatbotClient = axios.create({
   baseURL,

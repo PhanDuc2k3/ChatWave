@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Heart, MessageCircle, Share2, Pencil } from "lucide-react";
 import { uploadApi } from "../../api/uploadApi";
 
@@ -25,6 +26,7 @@ export default function HomePostCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const fileInputRef = useRef(null);
   const menuRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -69,7 +71,14 @@ export default function HomePostCard({
       : "U";
 
   const currentUserId = currentUser?.id || currentUser?._id;
-  const hasLiked = !!post.isLiked;
+  const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+  const hasLiked =
+    typeof post.isLiked === "boolean"
+      ? post.isLiked
+      : !!(
+          currentUserId &&
+          likedBy.map(String).includes(String(currentUserId))
+        );
   const isGuest = !currentUser;
 
   const likedTooltip = useMemo(() => {
@@ -121,7 +130,9 @@ export default function HomePostCard({
     if (!trimmed) return;
     const postId = post.id || post._id;
     if (!postId) return;
-    onAddComment(postId, trimmed);
+    if (typeof onAddComment === "function") {
+      onAddComment(postId, trimmed);
+    }
     setCommentText("");
   };
 
@@ -129,7 +140,7 @@ export default function HomePostCard({
   const initial = (post.authorName || "U").charAt(0).toUpperCase();
 
   const handleSaveEdit = async () => {
-    if (!onEdit) return;
+    if (typeof onEdit !== "function") return;
     if (!editText.trim() && !editImageUrl && !editImageFile) return;
     setSaving(true);
     try {
@@ -157,28 +168,37 @@ export default function HomePostCard({
     <article className="w-full bg-white rounded-2xl shadow-sm border border-[#E2E8F0] px-4 py-4 md:px-5 md:py-5 relative">
       {/* Header */}
       <header className="flex items-center gap-4 mb-4">
-        <div className="w-11 h-11 md:w-12 md:h-12 rounded-full overflow-hidden bg-[#FA8DAE]/20 flex items-center justify-center text-sm md:text-base font-semibold text-[#FA8DAE]">
-          {authorAvatar ? (
-            <img
-              src={authorAvatar}
-              alt={post.authorName}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            initial
-          )}
-        </div>
-        <div className="flex-1">
-          <p className="text-sm md:text-base font-semibold text-gray-900">
-            {post.authorName}
-          </p>
-          <p className="text-xs md:text-sm text-gray-500">
-            {post.authorSubtitle}
-            {post.feeling && ` · ${post.feeling}`}
-            {" · "}
-            {formatPostTime()}
-          </p>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const authorId = post.authorId || post.author;
+            if (authorId) navigate(`/profile/${authorId}`);
+          }}
+          className="flex items-center gap-3 text-left flex-1"
+        >
+          <div className="w-11 h-11 md:w-12 md:h-12 rounded-full overflow-hidden bg-[#FA8DAE]/20 flex items-center justify-center text-sm md:text-base font-semibold text-[#FA8DAE] shrink-0">
+            {authorAvatar ? (
+              <img
+                src={authorAvatar}
+                alt={post.authorName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              initial
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm md:text-base font-semibold text-gray-900 truncate">
+              {post.authorName}
+            </p>
+            <p className="text-xs md:text-sm text-gray-500">
+              {post.authorSubtitle}
+              {post.feeling && ` · ${post.feeling}`}
+              {" · "}
+              {formatPostTime()}
+            </p>
+          </div>
+        </button>
         {(onDelete || (onEdit && isAuthor) || onToggleSave) && (
           <div className="relative" ref={menuRef}>
             <button
@@ -191,7 +211,7 @@ export default function HomePostCard({
             </button>
             {menuOpen && (
             <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg py-1 z-10 min-w-[190px]">
-              {onEdit && isAuthor && (
+              {typeof onEdit === "function" && isAuthor && (
                 <button
                   type="button"
                   onClick={() => {
@@ -205,7 +225,7 @@ export default function HomePostCard({
                   <Pencil className="w-4 h-4" /> Sửa bài viết
                 </button>
               )}
-              {onDelete && isAuthor && (
+              {typeof onDelete === "function" && isAuthor && (
                 <button
                   type="button"
                   onClick={() => {
@@ -217,7 +237,7 @@ export default function HomePostCard({
                   Gỡ bài viết
                 </button>
               )}
-              {onToggleSave && (
+              {typeof onToggleSave === "function" && (
                 <button
                   type="button"
                   onClick={() => {
@@ -365,12 +385,20 @@ export default function HomePostCard({
       <div className="mt-5 border-t border-gray-100 pt-3 flex items-center justify-between text-xs md:text-sm text-gray-500">
         <button
           type="button"
-          onClick={() => !isGuest && onToggleLike(post.id || post._id)}
+          onClick={() =>
+            !isGuest &&
+            typeof onToggleLike === "function" &&
+            onToggleLike(post.id || post._id)
+          }
           title={likedTooltip}
           className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full hover:bg-orange-50 ${
             hasLiked ? "text-[#EA580C]" : "text-gray-600"
-          } ${isGuest ? "opacity-60 cursor-not-allowed" : ""}`}
-          disabled={isGuest}
+          } ${
+            isGuest || typeof onToggleLike !== "function"
+              ? "opacity-60 cursor-not-allowed"
+              : ""
+          }`}
+          disabled={isGuest || typeof onToggleLike !== "function"}
         >
           <Heart className={`w-5 h-5 ${hasLiked ? "fill-[#EA580C] text-[#EA580C]" : ""}`} />
           <span>{(post.likes || 0).toLocaleString("vi-VN")}</span>
@@ -378,32 +406,46 @@ export default function HomePostCard({
 
         <button
           type="button"
-          onClick={() => !isGuest && onOpenComments && onOpenComments(post)}
+          onClick={() =>
+            !isGuest &&
+            typeof onOpenComments === "function" &&
+            onOpenComments(post)
+          }
           className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full hover:bg-[#F1F5F9] text-gray-600 ${
-            isGuest ? "opacity-60 cursor-not-allowed" : ""
+            isGuest || typeof onOpenComments !== "function"
+              ? "opacity-60 cursor-not-allowed"
+              : ""
           }`}
-          disabled={isGuest}
+          disabled={isGuest || typeof onOpenComments !== "function"}
         >
           <MessageCircle className="w-5 h-5" />
           <span>{(post.comments || 0).toLocaleString("vi-VN")}</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => !isGuest && onShare(post.id || post._id)}
-          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full hover:bg-[#F1F5F9] text-gray-600 ${
-            isGuest ? "opacity-60 cursor-not-allowed" : ""
-          }`}
-          disabled={isGuest}
-        >
-          <Share2 className="w-5 h-5" />
-          <span>Chia sẻ</span>
-        </button>
+        {typeof onShare === "function" && (
+          <button
+            type="button"
+            onClick={() =>
+              !isGuest &&
+              typeof onShare === "function" &&
+              onShare(post.id || post._id)
+            }
+            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full hover:bg-[#F1F5F9] text-gray-600 ${
+              isGuest || typeof onShare !== "function"
+                ? "opacity-60 cursor-not-allowed"
+                : ""
+            }`}
+            disabled={isGuest || typeof onShare !== "function"}
+          >
+            <Share2 className="w-5 h-5" />
+            <span>Chia sẻ</span>
+          </button>
+        )}
       </div>
 
       {/* Comments */}
       <div className="mt-3 space-y-2">
-        {(showAllComments ? post.commentList || [] : post.commentList?.slice(0, 3) || []).map((cmt, index) => (
+        {(showAllComments ? post.commentList || [] : post.commentList?.slice(0, 2) || []).map((cmt, index) => (
           <div key={cmt.id || cmt._id || index} className="flex gap-2">
             <div className="w-7 h-7 rounded-full overflow-hidden bg-[#6CB8FF]/20 flex items-center justify-center text-[11px] font-semibold text-[#6CB8FF] shrink-0">
               {cmt.authorAvatar ? (
@@ -463,7 +505,10 @@ export default function HomePostCard({
               <button
                 key={idx}
                 type="button"
-                onClick={() => onVotePoll && onVotePoll(post.id || post._id, idx)}
+                onClick={() =>
+                  typeof onVotePoll === "function" &&
+                  onVotePoll(post.id || post._id, idx)
+                }
                 className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full border text-xs md:text-sm hover:bg-[#FFF7F0] ${
                   isVoted ? "border-[#FA8DAE] bg-[#FFF7F0] text-[#FA8DAE] font-medium" : "border-gray-200 text-gray-700"
                 }`}

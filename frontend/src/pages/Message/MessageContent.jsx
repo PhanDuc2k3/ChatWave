@@ -14,6 +14,10 @@ import {
   Search,
   ImagePlus,
   X,
+  Crown,
+  Shield,
+  UserMinus,
+  ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../context/ConfirmContext";
@@ -22,13 +26,22 @@ import { uploadApi } from "../../api/uploadApi";
 import VideoCallRoom from "../../components/VideoCallRoom";
 import { messageApi } from "../../api/messageApi";
 import { postApi } from "../../api/postApi";
+import { chatGroupApi } from "../../api/chatGroupApi";
 import HomePostCard from "../Home/HomePostCard";
+
+const CHAT_GROUP_ROLE_LABELS = {
+  owner: "Chủ nhóm",
+  admin: "Phó nhóm",
+  member: "Thành viên",
+};
 
 export default function MessageContent({
   selected,
   onConversationUpdate,
   onOpenCreateTask,
   onLeaveGroup,
+  showBackButton = false,
+  onBack = null,
 }) {
   const { confirm } = useConfirm();
   const messagesEndRef = useRef(null);
@@ -45,6 +58,9 @@ export default function MessageContent({
   const emojiPickerRef = useRef(null);
   const [previewPost, setPreviewPost] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [groupDetails, setGroupDetails] = useState(null);
+  const [updatingRole, setUpdatingRole] = useState(null);
+  const [removingMemberId, setRemovingMemberId] = useState(null);
   const [pendingImageUrl, setPendingImageUrl] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef(null);
@@ -66,6 +82,33 @@ export default function MessageContent({
   const currentUserId = storedUser?.id || storedUser?._id || "me";
   const currentUserName =
     storedUser?.username || storedUser?.email || storedUser?.name || "Bạn";
+
+  useEffect(() => {
+    if (!selected) {
+      setMessages([]);
+      setGroupDetails(null);
+      return;
+    }
+    if (!selected.isChatGroup || !selected.chatGroupId) {
+      setGroupDetails(null);
+    }
+  }, [selected?.id, selected?.isChatGroup, selected?.chatGroupId]);
+
+  useEffect(() => {
+    if (!selected?.isChatGroup || !selected?.chatGroupId || !showInfo) {
+      return;
+    }
+    let cancelled = false;
+    chatGroupApi
+      .getById(selected.chatGroupId)
+      .then((data) => {
+        if (!cancelled) setGroupDetails(data);
+      })
+      .catch(() => {
+        if (!cancelled) setGroupDetails(null);
+      });
+    return () => { cancelled = true; };
+  }, [selected?.chatGroupId, showInfo]);
 
   useEffect(() => {
     if (!selected) {
@@ -421,6 +464,16 @@ export default function MessageContent({
         <div className="flex-1 flex flex-col">
           {/* Header cuộc trò chuyện */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-[#FFF7F0]">
+            {showBackButton && onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="md:hidden mr-1 w-9 h-9 rounded-full flex items-center justify-center text-gray-700 hover:bg-white/70 transition"
+                title="Quay lại danh sách"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
             <div className="w-10 h-10 rounded-full bg-[#FED7AA] flex items-center justify-center text-sm font-semibold text-[#C2410C] overflow-hidden shrink-0">
               {selected.avatar ? (
                 <img src={selected.avatar} alt="" className="w-full h-full object-cover" />
@@ -787,6 +840,149 @@ export default function MessageContent({
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 text-[13px]">
+            {selected.isChatGroup && groupDetails?.members?.length > 0 && (
+              <div className="pb-4 border-b border-gray-100">
+                <p className="uppercase text-[11px] text-gray-400 mb-2">
+                  Thành viên nhóm ({groupDetails.members.length})
+                </p>
+                <div className="space-y-1">
+                  {groupDetails.members.map((m) => {
+                    const role =
+                      m.userId === groupDetails.ownerId
+                        ? "owner"
+                        : (m.role || "member");
+                    const myRole =
+                      groupDetails.members.find(
+                        (x) => x.userId === currentUserId
+                      )?.role ||
+                      (groupDetails.ownerId === currentUserId ? "owner" : "member");
+                    const canManage =
+                      myRole === "owner" || myRole === "admin";
+                    const canAssignAdmin = myRole === "owner";
+                    const canChangeRole =
+                      canManage &&
+                      m.userId !== currentUserId &&
+                      role !== "owner" &&
+                      (role !== "admin" || canAssignAdmin);
+                    const canKick =
+                      canManage &&
+                      m.userId !== currentUserId &&
+                      role !== "owner";
+
+                    return (
+                      <div
+                        key={m.userId}
+                        className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-[#FFF7F0]"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm font-medium text-gray-800 truncate">
+                            {m.displayName}
+                          </span>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 ${
+                              role === "owner"
+                                ? "bg-amber-100 text-amber-800"
+                                : role === "admin"
+                                ? "bg-purple-100 text-purple-800"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {role === "owner" && (
+                              <Crown className="w-3 h-3" />
+                            )}
+                            {role === "admin" && (
+                              <Shield className="w-3 h-3" />
+                            )}
+                            {role === "member" && (
+                              <User className="w-3 h-3" />
+                            )}
+                            {CHAT_GROUP_ROLE_LABELS[role] || role}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {canChangeRole && (
+                            <select
+                              value={role}
+                              disabled={!!updatingRole}
+                              onChange={async (e) => {
+                                const newRole = e.target.value;
+                                if (newRole === role) return;
+                                setUpdatingRole(m.userId);
+                                try {
+                                  await chatGroupApi.updateMemberRole(
+                                    selected.chatGroupId,
+                                    m.userId,
+                                    newRole
+                                  );
+                                  const updated =
+                                    await chatGroupApi.getById(
+                                      selected.chatGroupId
+                                    );
+                                  setGroupDetails(updated);
+                                  toast.success("Đã cập nhật vai trò.");
+                                } catch (err) {
+                                  toast.error(
+                                    err?.response?.data?.message ||
+                                      "Không thể cập nhật vai trò."
+                                  );
+                                } finally {
+                                  setUpdatingRole(null);
+                                }
+                              }}
+                              className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                            >
+                              {canAssignAdmin && (
+                                <option value="admin">Phó nhóm</option>
+                              )}
+                              <option value="member">Thành viên</option>
+                            </select>
+                          )}
+                          {canKick && (
+                            <button
+                              type="button"
+                              title="Xóa khỏi nhóm"
+                              disabled={!!removingMemberId}
+                              onClick={async () => {
+                                if (
+                                  !(await confirm(
+                                    `Xóa ${m.displayName} khỏi nhóm chat?`
+                                  ))
+                                )
+                                  return;
+                                setRemovingMemberId(m.userId);
+                                try {
+                                  await chatGroupApi.removeMember(
+                                    selected.chatGroupId,
+                                    m.userId
+                                  );
+                                  const updated =
+                                    await chatGroupApi.getById(
+                                      selected.chatGroupId
+                                    );
+                                  setGroupDetails(updated);
+                                  toast.success("Đã xóa thành viên khỏi nhóm.");
+                                } catch (err) {
+                                  toast.error(
+                                    err?.response?.data?.message ||
+                                      "Không thể xóa thành viên."
+                                  );
+                                } finally {
+                                  setRemovingMemberId(null);
+                                }
+                              }}
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 transition"
+                            >
+                              <UserMinus className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div>
               <button
                 type="button"

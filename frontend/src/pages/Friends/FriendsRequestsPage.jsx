@@ -155,7 +155,34 @@ export default function FriendsRequestsPage() {
       headerContent={headerContent}
       showSearch={false}
     >
-      <div className="w-full flex flex-col md:flex-row gap-4">
+      <div className="w-full flex flex-col gap-4">
+        {/* Tabs cho mobile */}
+        <div className="md:hidden w-full bg-white rounded-2xl border border-gray-200 px-3 py-2 shadow-sm">
+          <div className="flex items-center justify-between gap-1 text-xs">
+            <button
+              type="button"
+              onClick={() => navigate("/friends")}
+              className="flex-1 px-2 py-1.5 rounded-full text-gray-600 hover:bg-gray-50"
+            >
+              Trang chủ
+            </button>
+            <button
+              type="button"
+              className="flex-1 px-2 py-1.5 rounded-full bg-[#FFF7F0] text-[#FA8DAE] font-semibold"
+            >
+              Lời mời
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/friends/all")}
+              className="flex-1 px-2 py-1.5 rounded-full text-gray-600 hover:bg-gray-50"
+            >
+              Tất cả bạn bè
+            </button>
+          </div>
+        </div>
+
+        <div className="w-full flex flex-col md:flex-row gap-4">
         {/* Left column: friend requests list */}
         <aside className="w-full md:w-1/3 bg-white text-gray-900 rounded-2xl border border-gray-200 p-3 md:p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -313,6 +340,7 @@ export default function FriendsRequestsPage() {
             </div>
           )}
         </section>
+      </div>
       </div>
     </MainLayout>
   );

@@ -9,6 +9,7 @@ import { friendApi } from "../../api/friendApi";
 import { postApi } from "../../api/postApi";
 import { authApi } from "../../api/authApi";
 import { uploadApi } from "../../api/uploadApi";
+import { messageApi } from "../../api/messageApi";
 import { useProfile } from "../../hooks/useProfile";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../context/ConfirmContext";
@@ -24,6 +25,10 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [clearAvatar, setClearAvatar] = useState(false);
+  const [sharePostId, setSharePostId] = useState(null);
+  const [friendsForShare, setFriendsForShare] = useState([]);
+  const [loadingFriendsForShare, setLoadingFriendsForShare] = useState(false);
+  const [sendingShare, setSendingShare] = useState(false);
 
   const {
     profile,
@@ -50,6 +55,109 @@ export default function ProfilePage() {
   const { name, username, bio, stats, info } = profile;
   const initial = name.charAt(0);
 
+  const withLikeState = (post) => {
+    const likedBy = post.likedBy || [];
+    const isLiked = currentUserId
+      ? likedBy.map(String).includes(String(currentUserId))
+      : false;
+    return { ...post, isLiked };
+  };
+
+  // Chỉ tính và hiển thị các bài viết cá nhân (không thuộc nhóm)
+  const personalPosts = React.useMemo(
+    () =>
+      (userPosts || []).filter(
+        (p) => !p.groupId && !p.chatGroupId && !p.chat_group_id
+      ),
+    [userPosts]
+  );
+
+  const selectedPostToShare = React.useMemo(
+    () =>
+      userPosts.find((p) => (p.id || p._id) === sharePostId) || null,
+    [userPosts, sharePostId]
+  );
+
+  const buildPostPreviewText = (post) => {
+    if (!post) return "";
+    const parts = [];
+    if (post.text) {
+      parts.push(
+        post.text.length > 140 ? `${post.text.slice(0, 140)}…` : post.text
+      );
+    }
+    if (!post.text && post.imageUrl) {
+      return "Bài viết có hình ảnh";
+    }
+    if (parts.length === 0) {
+      return "Bài viết trên bảng tin ChatWave";
+    }
+    return parts.join(" ");
+  };
+
+  const handleSharePost = (postId) => {
+    if (!currentUserId) {
+      toast.error("Bạn cần đăng nhập để chia sẻ bài viết.");
+      return;
+    }
+    setSharePostId(postId);
+    if (!friendsForShare.length) {
+      (async () => {
+        try {
+          setLoadingFriendsForShare(true);
+          const data = await friendApi.getFriends(currentUserId);
+          setFriendsForShare(data || []);
+        } catch {
+          setFriendsForShare([]);
+        } finally {
+          setLoadingFriendsForShare(false);
+        }
+      })();
+    }
+  };
+
+  const handleSendShareToFriend = async (friend) => {
+    if (!selectedPostToShare || !currentUserId) return;
+    const friendId = friend?.id || friend?._id || friend?.userId;
+    if (!friendId) return;
+
+    const userA = String(currentUserId);
+    const userB = String(friendId);
+    const [a, b] = userA < userB ? [userA, userB] : [userB, userA];
+    const conversationId = `direct:${a}:${b}`;
+
+    const friendName =
+      friend.username ||
+      friend.email ||
+      friend.name ||
+      friend.displayName ||
+      "Người bạn";
+
+    const meta = {
+      type: "post_share",
+      postId: selectedPostToShare.id || selectedPostToShare._id,
+      preview: buildPostPreviewText(selectedPostToShare),
+      imageUrl: selectedPostToShare.imageUrl || null,
+    };
+    const previewText = `[POST_SHARE] ${JSON.stringify(meta)}`;
+
+    try {
+      setSendingShare(true);
+      await messageApi.sendMessage(conversationId, {
+        senderId: currentUserId,
+        senderName: currentUserName,
+        conversationName: `${currentUserName} & ${friendName}`,
+        text: previewText,
+      });
+      toast.success("Đã chia sẻ bài viết qua tin nhắn.");
+      setSharePostId(null);
+    } catch (err) {
+      toast.error(err?.message || "Không chia sẻ được bài viết.");
+    } finally {
+      setSendingShare(false);
+    }
+  };
+
   const headerContent = (
     <div className="flex items-center justify-between w-full">
       <h2 className="text-sm md:text-base font-semibold text-gray-800">
@@ -64,7 +172,7 @@ export default function ProfilePage() {
 
   return (
     <MainLayout headerContent={headerContent}>
-      <div className="w-full max-w-4xl mx-auto py-6 space-y-6 px-2">
+      <div className="w-full max-w-4xl mx-auto py-4 md:py-6 space-y-5 md:space-y-6 px-3 md:px-2 pb-16 md:pb-8">
         {loading && (
           <p className="text-center text-sm text-gray-500">
             Đang tải hồ sơ...
@@ -72,9 +180,9 @@ export default function ProfilePage() {
         )}
         {/* Cover + Avatar */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="h-32 md:h-40 bg-linear-to-r from-[#F5C46A] to-[#FA8DAE]" />
-          <div className="px-4 pb-4 -mt-12 relative">
-            <div className="w-24 h-24 rounded-2xl bg-[#FFF7F0] border-4 border-white shadow-md flex items-center justify-center overflow-hidden">
+          <div className="h-24 sm:h-32 md:h-40 bg-linear-to-r from-[#F5C46A] to-[#FA8DAE]" />
+          <div className="px-4 pb-4 -mt-10 sm:-mt-12 relative">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#FFF7F0] border-4 border-white shadow-md flex items-center justify-center overflow-hidden">
               {profile.avatar ? (
                 <img src={profile.avatar} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -91,7 +199,7 @@ export default function ProfilePage() {
                 <Pencil className="w-4 h-4" />
               </button>
             )}
-            <h1 className="mt-3 text-xl md:text-2xl font-bold text-gray-900">
+            <h1 className="mt-3 text-lg md:text-2xl font-bold text-gray-900">
               {name}
             </h1>
             <p className="text-sm text-gray-500">@{username}</p>
@@ -179,16 +287,18 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-          <div className="flex justify-around text-center">
-            <div>
-              <p className="text-xl font-bold text-[#FA8DAE]">{stats.posts}</p>
+          <div className="flex justify-between sm:justify-around text-center gap-4">
+            <div className="flex-1">
+              <p className="text-xl font-bold text-[#FA8DAE]">
+                {personalPosts.length}
+              </p>
               <p className="text-xs text-gray-500">Bài viết</p>
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-xl font-bold text-[#6CB8FF]">{stats.friends}</p>
               <p className="text-xs text-gray-500">Bạn bè</p>
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-xl font-bold text-[#F9C96D]">{stats.photos}</p>
               <p className="text-xs text-gray-500">Ảnh</p>
             </div>
@@ -257,12 +367,12 @@ export default function ProfilePage() {
         {/* Tab content */}
         {(activeTab === "posts" || activeTab === "all") ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-4">
-            {userPosts.length === 0 ? (
+            {personalPosts.length === 0 ? (
               <p className="text-gray-500 text-sm text-center">
                 Chưa có bài viết nào. Chia sẻ điều gì đó từ trang chủ nhé!
               </p>
             ) : (
-              userPosts.map((post) => (
+              personalPosts.map((post) => (
                 <HomePostCard
                   key={post.id || post._id}
                   post={post}
@@ -271,26 +381,46 @@ export default function ProfilePage() {
                       const updated = await postApi.like(id, currentUserId);
                       setUserPosts((prev) =>
                         prev.map((p) =>
-                          (p.id || p._id) === id ? { ...p, ...updated } : p
+                          (p.id || p._id) === id
+                            ? withLikeState({ ...p, ...updated })
+                            : p
                         )
                       );
                     } catch (err) {
                       toast.error(err?.message || "Không thể thích bài viết.");
                     }
                   }}
-                  onAddComment={async (id, text) => {
-                    try {
-                      const updated = await postApi.addComment(id, { text });
-                      setUserPosts((prev) =>
-                        prev.map((p) =>
-                          (p.id || p._id) === id ? { ...p, ...updated } : p
-                        )
-                      );
-                    } catch (err) {
-                      toast.error(err?.message || "Không thêm được bình luận.");
+                  onAddComment={
+                    async (id, text) => {
+                      try {
+                        const user =
+                          JSON.parse(
+                            localStorage.getItem("chatwave_user") || "null"
+                          ) || {};
+                        if (!user || (!user.username && !user.email)) {
+                          toast.error("Bạn cần đăng nhập để bình luận.");
+                          return;
+                        }
+                        const updated = await postApi.addComment(id, {
+                          author: user.username || "User",
+                          authorAvatar: user.avatar || null,
+                          text,
+                        });
+                        setUserPosts((prev) =>
+                          prev.map((p) =>
+                            (p.id || p._id) === id
+                              ? withLikeState({ ...p, ...updated })
+                              : p
+                          )
+                        );
+                      } catch (err) {
+                        toast.error(
+                          err?.message || "Không thêm được bình luận."
+                        );
+                      }
                     }
-                  }}
-                  onShare={null}
+                  }
+                  onShare={handleSharePost}
                   onDelete={isMe ? async (id) => {
                     if (!(await confirm("Bạn có chắc muốn gỡ bài viết này?"))) return;
                     try {
@@ -316,8 +446,7 @@ export default function ProfilePage() {
                       toast.error(err?.message || "Không cập nhật được bài viết.");
                     }
                   } : null}
-                  onOpenComments={() => {}}
-                  showAllComments
+                  onOpenComments={null}
                 />
               ))
             )}
@@ -608,6 +737,87 @@ export default function ProfilePage() {
                 className="px-4 py-2 bg-[#FA8DAE] text-white rounded-lg text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {avatarUploading ? "Đang tải ảnh..." : "Lưu"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sharePostId && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-2">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col shadow-xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+              <h3 className="text-sm md:text-base font-semibold text-gray-800">
+                Chia sẻ bài viết
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSharePostId(null)}
+                className="text-gray-500 hover:text-gray-700 text-lg px-2"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="px-4 py-3 border-b border-gray-100">
+              <p className="text-xs text-gray-500 mb-2">
+                Bạn muốn gửi bài viết này cho ai?
+              </p>
+              {selectedPostToShare && (
+                <div className="p-2 rounded-xl bg-gray-50 border border-gray-100 text-xs text-gray-700 line-clamp-3">
+                  {buildPostPreviewText(selectedPostToShare)}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+              {loadingFriendsForShare ? (
+                <p className="text-xs text-gray-500">
+                  Đang tải danh sách bạn bè...
+                </p>
+              ) : friendsForShare.length === 0 ? (
+                <p className="text-xs text-gray-500">
+                  Bạn chưa có bạn bè nào để chia sẻ. Hãy kết bạn trước nhé.
+                </p>
+              ) : (
+                friendsForShare.map((f) => {
+                  const name =
+                    f.username ||
+                    f.email ||
+                    f.name ||
+                    f.displayName ||
+                    "Người bạn";
+                  const initial = name.trim().charAt(0).toUpperCase();
+                  return (
+                    <button
+                      key={f.id || f._id || f.userId}
+                      type="button"
+                      disabled={sendingShare}
+                      onClick={() => handleSendShareToFriend(f)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-gray-100 hover:bg-gray-50 text-left text-xs md:text-sm"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-[#FFE6DD] flex items-center justify-center text-[11px] font-semibold text-[#F58A4A] shrink-0">
+                          {initial}
+                        </div>
+                        <span className="truncate">{name}</span>
+                      </div>
+                      <span className="text-[11px] md:text-xs text-[#FA8DAE]">
+                        {sendingShare ? "Đang gửi..." : "Gửi"}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="px-4 py-3 border-t border-gray-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSharePostId(null)}
+                className="px-3 py-1.5 rounded-full border border-gray-300 text-xs text-gray-600 hover:bg-gray-50"
+              >
+                Đóng
               </button>
             </div>
           </div>

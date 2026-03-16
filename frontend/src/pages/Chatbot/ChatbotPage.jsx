@@ -25,6 +25,7 @@ export default function ChatbotPage() {
   const [createTasksModal, setCreateTasksModal] = useState(null);
   const [friendOptions, setFriendOptions] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileView, setMobileView] = useState("list"); // 'list' | 'chat'
   const endRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -219,7 +220,213 @@ export default function ChatbotPage() {
 
   return (
     <MainLayout>
-      <div className="h-full flex bg-[#F3F6FB]">
+      {/* MOBILE LAYOUT */}
+      <div className="h-full flex flex-col bg-[#F3F6FB] md:hidden">
+        {mobileView === "list" ? (
+          <div className="flex-1 flex flex-col bg-white">
+            <div className="shrink-0 p-3 border-b border-[#E2E8F0] flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">
+                Cuộc hội thoại
+              </span>
+              <button
+                type="button"
+                onClick={handleNewChat}
+                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-[11px] font-medium bg-[#6CB8FF]/10 text-[#6CB8FF] hover:bg-[#6CB8FF]/20"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Mới
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {sessionsLoading ? (
+                <p className="text-xs text-gray-500 px-2">Đang tải...</p>
+              ) : sessions.length === 0 ? (
+                <p className="text-xs text-gray-500 px-2">
+                  Chưa có cuộc hội thoại nào. Bắt đầu một cuộc hội thoại mới.
+                </p>
+              ) : (
+                sessions.map((s) => (
+                  <div
+                    key={s?.id || s?._id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={async () => {
+                      await loadSession(s);
+                      setMobileView("chat");
+                    }}
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter") {
+                        await loadSession(s);
+                        setMobileView("chat");
+                      }
+                    }}
+                    className={`group flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm mb-1 cursor-pointer ${
+                      (currentSession?.id || currentSession?._id) ===
+                      (s?.id || s?._id)
+                        ? "bg-[#6CB8FF]/15 text-[#6CB8FF]"
+                        : "hover:bg-gray-50 text-gray-700"
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4 shrink-0" />
+                    <span className="flex-1 truncate">
+                      {s.title || "Cuộc hội thoại"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) =>
+                        handleDeleteSession(e, s?.id || s?._id)
+                      }
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 text-red-500"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="shrink-0 px-4 py-3 bg-white border-b border-[#E2E8F0] flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMobileView("list")}
+                  className="mr-1 w-9 h-9 rounded-full flex items-center justify-center bg-white border border-[#E2E8F0]"
+                  title="Quay lại danh sách"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div>
+                  <h1 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-[#6CB8FF]" />
+                    Chatbot AI
+                  </h1>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Trợ lý AI –{" "}
+                    {currentSession
+                      ? currentSession.title
+                      : "Cuộc hội thoại mới"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {currentSession && (
+                  <button
+                    type="button"
+                    onClick={(e) =>
+                      handleDeleteSession(
+                        e,
+                        currentSession.id || currentSession._id
+                      )
+                    }
+                    className="w-9 h-9 rounded-full flex items-center justify-center border border-red-100 text-red-500 hover:bg-red-50"
+                    title="Xóa cuộc hội thoại"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCreateTasksFromChat}
+                  disabled={loading || createTasksLoading}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#6CB8FF]/10 text-[#6CB8FF] hover:bg-[#6CB8FF]/20 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Tạo task
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex gap-3 ${
+                    msg.role === "user" ? "flex-row-reverse" : ""
+                  }`}
+                >
+                  <div
+                    className={`w-9 h-9 rounded-full shrink-0 flex items-center justify-center ${
+                      msg.role === "user"
+                        ? "bg-[#FA8DAE] text-white"
+                        : "bg-[#6CB8FF] text-white"
+                    }`}
+                  >
+                    {msg.role === "user" ? (
+                      <User className="w-4 h-4" />
+                    ) : (
+                      <Bot className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
+                      msg.role === "user"
+                        ? "bg-[#FA8DAE] text-white rounded-tr-sm"
+                        : "bg-white border border-[#E2E8F0] text-gray-800 rounded-tl-sm"
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">
+                      {msg.content}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex gap-3">
+                  <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center bg-[#6CB8FF] text-white">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                  <div className="bg-white border border-[#E2E8F0] rounded-2xl rounded-tl-sm px-4 py-2.5">
+                    <div className="flex gap-1">
+                      <span
+                        className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+                        style={{ animationDelay: "0ms" }}
+                      />
+                      <span
+                        className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+                        style={{ animationDelay: "150ms" }}
+                      />
+                      <span
+                        className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+                        style={{ animationDelay: "300ms" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={endRef} />
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="shrink-0 px-4 py-3 bg-white border-t border-[#E2E8F0]"
+            >
+              <div className="flex gap-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Nhập tin nhắn..."
+                  className="flex-1 rounded-2xl border border-[#E2E8F0] px-4 py-2.5 text-sm outline-none focus:border-[#6CB8FF] focus:ring-1 focus:ring-[#6CB8FF]"
+                  disabled={loading}
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !input.trim()}
+                  className="w-11 h-11 rounded-full bg-[#6CB8FF] text-white flex items-center justify-center hover:bg-[#5AA3E8] disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+
+      {/* DESKTOP LAYOUT */}
+      <div className="h-full hidden md:flex bg-[#F3F6FB]">
         {/* Sidebar: Danh sách cuộc hội thoại */}
         <aside
           className={`shrink-0 flex flex-col bg-white border-r border-[#E2E8F0] transition-all ${
@@ -264,7 +471,7 @@ export default function ChatbotPage() {
                   <button
                     type="button"
                     onClick={(e) => handleDeleteSession(e, s?.id || s?._id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 text-red-500"
+                    className="p-1 rounded hover:bg-red-100 text-red-500"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -275,7 +482,7 @@ export default function ChatbotPage() {
         </aside>
 
         {/* Chat chính */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 relative">
           {!sidebarOpen && (
             <button
               type="button"

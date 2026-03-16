@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api-proxy/core/:path*",
+      "destination": "http://157.15.108.181:5001/api/v1/:path*"
+    },
+    {
+      "source": "/api-proxy/chatbot/:path*",
+      "destination": "http://157.15.108.181:5003/api/v1/:path*"
+    }
+  ]
+}

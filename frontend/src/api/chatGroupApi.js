@@ -17,6 +17,12 @@ export const chatGroupApi = {
     return axiosClient.post(`/chat-groups/${groupId}/members`, payload);
   },
 
+  updateMemberRole(groupId, memberId, role) {
+    return axiosClient.patch(`/chat-groups/${groupId}/members/${memberId}`, {
+      role,
+    });
+  },
+
   removeMember(groupId, memberId) {
     return axiosClient.delete(`/chat-groups/${groupId}/members/${memberId}`);
   },

@@ -634,8 +634,8 @@ export default function HomePage() {
     <MainLayout>
       {/* Nền tổng giống app social: xanh rất nhạt, card trắng */}
       <div className="min-h-[calc(100vh-80px)] w-full bg-[#F3F6FB] text-base md:text-[17px]">
-        <div className="w-full px-3 md:px-6 py-4 md:py-6 grid grid-cols-1 lg:grid-cols-[5fr_8fr_5fr] gap-4 lg:gap-6 items-start">
-          {/* Cột 1: menu nhỏ + Nhóm của tôi */}
+        <div className="w-full px-3 md:px-6 py-4 md:py-6 flex flex-col lg:grid lg:grid-cols-[5fr_8fr_5fr] gap-4 lg:gap-6 items-start">
+          {/* Cột 1: menu nhỏ + Nhóm của tôi (desktop) */}
           <aside className="hidden lg:flex flex-col gap-6 lg:sticky lg:top-4 self-start">
             <nav className="text-base text-gray-600">
               <ul className="space-y-1">
@@ -740,6 +740,55 @@ export default function HomePage() {
 
           {/* Cột 2: tạo bài & feed */}
           <div className="flex-1 flex flex-col items-stretch gap-4">
+            {/* Tabs cho mobile/tablet */}
+            <div className="lg:hidden w-full rounded-2xl bg-white shadow-sm border border-[#E2E8F0] px-3 py-2 mb-1">
+              <div className="flex items-center justify-between gap-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setActiveSection("feed")}
+                  className={`flex-1 px-2 py-1.5 rounded-full ${
+                    activeSection === "feed"
+                      ? "bg-[#FFEDD5] text-[#EA580C] font-semibold"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  Bảng tin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection("explore")}
+                  className={`flex-1 px-2 py-1.5 rounded-full ${
+                    activeSection === "explore"
+                      ? "bg-[#FFF7F0] text-[#EA580C] font-semibold"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  Khám phá
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection("groups")}
+                  className={`flex-1 px-2 py-1.5 rounded-full ${
+                    activeSection === "groups"
+                      ? "bg-[#FFF7F0] text-[#EA580C] font-semibold"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  Nhóm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection("saved")}
+                  className={`flex-1 px-2 py-1.5 rounded-full ${
+                    activeSection === "saved"
+                      ? "bg-[#FFF7F0] text-[#EA580C] font-semibold"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  Đã lưu
+                </button>
+              </div>
+            </div>
             {activeSection === "feed" && (
               <HomeCreatePost onCreatePost={handleCreatePost} />
             )}
@@ -1013,7 +1062,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Cột 3: Chủ đề nổi bật + Nhóm gợi ý */}
+          {/* Cột 3: Chủ đề nổi bật + Nhóm gợi ý (desktop) */}
           <aside className="hidden lg:flex lg:flex-col gap-4 lg:sticky lg:top-4 self-start">
             <div className="rounded-2xl bg-white shadow-sm border border-[#E2E8F0] px-4 py-4 space-y-3">
               <div className="flex items-center justify-between">
