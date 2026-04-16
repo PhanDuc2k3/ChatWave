@@ -1,5 +1,14 @@
 // Very small validation helpers instead of bringing in a full schema library.
 
+function validatePassword(password) {
+  if (!password || typeof password !== "string") return "Mật khẩu không được để trống";
+  const p = String(password).trim();
+  if (p.length < 6) return "Mật khẩu cần ít nhất 6 ký tự";
+  if (!/[a-zA-Z]/.test(p)) return "Mật khẩu cần có ít nhất 1 chữ cái";
+  if (!/[0-9]/.test(p)) return "Mật khẩu cần có ít nhất 1 chữ số";
+  return null;
+}
+
 function validateNewUser(payload = {}) {
   const errors = [];
 
@@ -11,6 +20,9 @@ function validateNewUser(payload = {}) {
   }
   if (!payload.password || typeof payload.password !== "string") {
     errors.push("password is required");
+  } else {
+    const pwdErr = validatePassword(payload.password);
+    if (pwdErr) errors.push(pwdErr);
   }
 
   if (errors.length) {
@@ -52,5 +64,6 @@ function validateUpdateUser(payload = {}) {
 module.exports = {
   validateNewUser,
   validateUpdateUser,
+  validatePassword,
 };
 

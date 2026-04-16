@@ -25,6 +25,7 @@ const postSchema = new mongoose.Schema(
         {
           text: { type: String, required: true },
           votes: { type: Number, default: 0 },
+          votedBy: { type: [String], default: [] },
         },
       ],
     },

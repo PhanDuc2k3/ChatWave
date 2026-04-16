@@ -49,6 +49,9 @@ function normalize(doc, ret) {
 chatMessageSchema.set("toJSON", { transform: normalize });
 chatMessageSchema.set("toObject", { transform: normalize });
 
+// Tối ưu truy vấn theo cuộc trò chuyện + thời gian
+chatMessageSchema.index({ conversationId: 1, createdAt: -1 });
+
 const ChatMessage = mongoose.model("ChatMessage", chatMessageSchema);
 
 module.exports = ChatMessage;

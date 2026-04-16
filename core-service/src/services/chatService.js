@@ -1,12 +1,15 @@
 const chatRepository = require("../repositories/chatRepository");
 
-async function getMessages(conversationId) {
+async function getMessages(conversationId, { before, limit } = {}) {
   if (!conversationId) {
     const err = new Error("conversationId is required");
     err.statusCode = 400;
     throw err;
   }
-  return chatRepository.getMessagesByConversation(String(conversationId));
+  return chatRepository.getMessagesByConversation(String(conversationId), {
+    before,
+    limit,
+  });
 }
 
 async function sendMessage(conversationId, payload) {
@@ -33,8 +36,28 @@ async function sendMessage(conversationId, payload) {
   return message;
 }
 
+async function getMedia(conversationId) {
+  if (!conversationId) {
+    const err = new Error("conversationId is required");
+    err.statusCode = 400;
+    throw err;
+  }
+  return chatRepository.getMediaByConversation(String(conversationId));
+}
+
+async function getFiles(conversationId) {
+  if (!conversationId) {
+    const err = new Error("conversationId is required");
+    err.statusCode = 400;
+    throw err;
+  }
+  return chatRepository.getFilesByConversation(String(conversationId));
+}
+
 module.exports = {
   getMessages,
   sendMessage,
+  getMedia,
+  getFiles,
 };
 

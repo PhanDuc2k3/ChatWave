@@ -31,7 +31,8 @@ async function getTasksByAssignee(req, res, next) {
 
 async function getAllTasks(req, res, next) {
   try {
-    const tasks = await taskService.getAll();
+    const userId = req.user?.id;
+    const tasks = await taskService.getAll(userId);
     res.json(tasks);
   } catch (err) {
     next(err);
@@ -40,7 +41,8 @@ async function getAllTasks(req, res, next) {
 
 async function submitTask(req, res, next) {
   try {
-    const task = await taskService.submitTask(req.params.id, req.body);
+    const actorId = req.user?.id;
+    const task = await taskService.submitTask(req.params.id, req.body, actorId);
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
   } catch (err) {
@@ -51,10 +53,11 @@ async function submitTask(req, res, next) {
 async function updateStatus(req, res, next) {
   try {
     const { status } = req.body || {};
-    if (!status || !["pending", "in_progress", "done"].includes(status)) {
+    if (!status || !["pending", "in_progress", "done", "cancelled"].includes(status)) {
       return res.status(400).json({ message: "status phải là pending, in_progress hoặc done" });
     }
-    const task = await taskService.updateStatus(req.params.id, status);
+    const actorId = req.user?.id;
+    const task = await taskService.updateStatus(req.params.id, status, actorId);
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
   } catch (err) {
@@ -64,7 +67,8 @@ async function updateStatus(req, res, next) {
 
 async function updateTask(req, res, next) {
   try {
-    const task = await taskService.updateTask(req.params.id, req.body);
+    const actorId = req.user?.id;
+    const task = await taskService.updateTask(req.params.id, req.body, actorId);
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
   } catch (err) {
@@ -88,7 +92,8 @@ async function reassignTask(req, res, next) {
     if (!assigneeId) {
       return res.status(400).json({ message: "assigneeId là bắt buộc" });
     }
-    const task = await taskService.reassignTask(req.params.id, assigneeId, assigneeName);
+    const actorId = req.user?.id;
+    const task = await taskService.reassignTask(req.params.id, assigneeId, assigneeName, actorId);
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
   } catch (err) {

@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      index: true,
       lowercase: true,
       trim: true,
     },
@@ -24,6 +25,23 @@ const userSchema = new mongoose.Schema(
     },
     avatar: { type: String, default: null },
     bio: { type: String, default: "", trim: true },
+    blocked: {
+      type: Boolean,
+      default: false,
+    },
+    blockReason: {
+      type: String,
+      default: null,
+    },
+    blockedAt: {
+      type: Date,
+      default: null,
+    },
+    teamId: {
+      type: String,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,

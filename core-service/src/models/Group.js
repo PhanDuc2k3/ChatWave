@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+// Role system: Chỉ có 2 roles - leader (1 người/nhóm) và member
+// Leader có thể chuyển giao quyền cho member khác
 const memberSchema = new mongoose.Schema(
   {
     userId: {
@@ -13,7 +15,7 @@ const memberSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["owner", "admin", "member"],
+      enum: ["leader", "member"],
       default: "member",
     },
   },

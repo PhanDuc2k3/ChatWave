@@ -4,8 +4,12 @@ const conversationService = require("../services/conversationService");
 async function getMessages(req, res, next) {
   try {
     const { conversationId } = req.params;
-    const messages = await chatService.getMessages(conversationId);
-    res.json(messages);
+    const { before, limit } = req.query;
+    const result = await chatService.getMessages(conversationId, {
+      before,
+      limit,
+    });
+    res.json(result);
   } catch (err) {
     next(err);
   }
@@ -23,8 +27,34 @@ async function sendMessage(req, res, next) {
 
 async function getConversations(req, res, next) {
   try {
+    // Disable cache
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store");
+
     const { userId } = req.query;
     const items = await conversationService.getConversations(userId);
+    res.json(items);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getMedia(req, res, next) {
+  try {
+    const { conversationId } = req.params;
+    const items = await chatService.getMedia(conversationId);
+    res.json(items);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getFiles(req, res, next) {
+  try {
+    const { conversationId } = req.params;
+    const items = await chatService.getFiles(conversationId);
     res.json(items);
   } catch (err) {
     next(err);
@@ -35,5 +65,7 @@ module.exports = {
   getMessages,
   sendMessage,
   getConversations,
+  getMedia,
+  getFiles,
 };
 

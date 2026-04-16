@@ -62,6 +62,15 @@ async function remove(id) {
   return !!res;
 }
 
+async function findByTeam(teamId) {
+  const users = await User.find({ teamId }).lean();
+  return users.map((u) => {
+    const copy = { ...u };
+    delete copy.passwordHash;
+    return copy;
+  });
+}
+
 module.exports = {
   findAll,
   findById,
@@ -70,5 +79,6 @@ module.exports = {
   update,
   remove,
   search,
+  findByTeam,
 };
 

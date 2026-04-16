@@ -13,7 +13,7 @@ const deliverableSchema = new mongoose.Schema(
 const taskSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
-    description: { type: String, default: "" },
+    description: { type: mongoose.Schema.Types.Mixed, default: "" },
     assignerId: { type: String, required: true },
     assignerName: { type: String, required: true },
     assigneeId: { type: String, default: null },
@@ -35,7 +35,7 @@ const taskSchema = new mongoose.Schema(
     submissionDeliverables: { type: [deliverableSchema], default: [] },
     status: {
       type: String,
-      enum: ["pending", "in_progress", "done"],
+      enum: ["pending", "in_progress", "done", "cancelled"],
       default: "pending",
     },
     priority: {

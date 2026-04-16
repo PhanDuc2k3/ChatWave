@@ -99,6 +99,11 @@ async function updateVisibility(groupId, visibility) {
   return group ? group.toObject() : null;
 }
 
+async function deleteGroup(groupId) {
+  const result = await Group.findByIdAndDelete(groupId);
+  return result ? { success: true } : null;
+}
+
 module.exports = {
   createGroup,
   findById,
@@ -110,5 +115,6 @@ module.exports = {
   updateMemberRole,
   removeMember,
   updateVisibility,
+  deleteGroup,
 };
 

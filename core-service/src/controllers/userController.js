@@ -64,6 +64,41 @@ async function deleteUser(req, res, next) {
   }
 }
 
+async function blockUser(req, res, next) {
+  try {
+    const { reason } = req.body || {};
+    const user = await userService.blockUser(req.params.id, reason);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function unblockUser(req, res, next) {
+  try {
+    const user = await userService.unblockUser(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getTeam(req, res, next) {
+  try {
+    const { teamId } = req.params;
+    const team = await userService.getTeamById(teamId);
+    res.json(team);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -71,5 +106,8 @@ module.exports = {
   updateUser,
   deleteUser,
   searchUsers,
+  blockUser,
+  unblockUser,
+  getTeam,
 };
 

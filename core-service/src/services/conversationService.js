@@ -1,8 +1,32 @@
 const ChatMessage = require("../models/ChatMessage");
+const ChatGroup = require("../models/ChatGroup");
 const User = require("../models/User");
 
 async function getConversations(currentUserId) {
+  if (!currentUserId) return [];
+
+  const userIdStr = String(currentUserId);
+
+  // Bước 1: Lấy tất cả groups user là member (1 query nhanh với index)
+  const userGroups = await ChatGroup.find({
+    "members.userId": userIdStr,
+  }).lean();
+
+  const userGroupIds = new Set(userGroups.map(g => String(g._id)));
+
+  // Bước 2: Lấy tất cả messages, group theo conversationId
+  // Tối ưu: Filter trước khi aggregate để giảm data xử lý
+  const matchStage = {
+    $match: {
+      $or: [
+        { conversationId: { $regex: `^direct:.*:${userIdStr}$|^direct:${userIdStr}:` } },
+        { conversationId: { $in: Array.from(userGroupIds) } },
+      ],
+    },
+  };
+
   const pipeline = [
+    matchStage,
     { $sort: { createdAt: 1 } },
     {
       $group: {
@@ -16,68 +40,70 @@ async function getConversations(currentUserId) {
 
   const results = await ChatMessage.aggregate(pipeline);
 
+  // Bước 3: Build user map cho direct chat
   let userMap = {};
-  const hasCurrentUser = !!currentUserId;
+  const userIds = new Set();
 
-  if (hasCurrentUser) {
-    const userIds = new Set();
-
-    for (const item of results) {
-      const idStr = String(item._id);
-      if (idStr.startsWith("direct:")) {
-        const parts = idStr.split(":"); // direct:userA:userB
-        if (parts.length === 3) {
-          const [, u1, u2] = parts;
-          userIds.add(u1);
-          userIds.add(u2);
-        }
+  for (const item of results) {
+    const convId = String(item._id);
+    if (convId.startsWith("direct:")) {
+      const parts = convId.split(":");
+      if (parts.length === 3) {
+        const [, u1, u2] = parts;
+        if (u1 !== userIdStr) userIds.add(u1);
+        if (u2 !== userIdStr) userIds.add(u2);
       }
-    }
-
-    if (userIds.size > 0) {
-      const users = await User.find({
-        _id: { $in: Array.from(userIds) },
-      }).lean();
-
-      userMap = Object.fromEntries(
-        users.map((u) => [
-          String(u._id),
-          u.username || u.email || "User",
-        ])
-      );
     }
   }
 
-  return results.map((item) => {
+  if (userIds.size > 0) {
+    const users = await User.find({
+      _id: { $in: Array.from(userIds) },
+    }).lean();
+
+    userMap = Object.fromEntries(
+      users.map((u) => [
+        String(u._id),
+        {
+          name: u.username || u.email || "User",
+          avatar: u.avatar || null,
+        },
+      ])
+    );
+  }
+
+  // Bước 4: Map results
+    return results.map((item) => {
     const last = item.lastMessage;
-    const idStr = String(item._id);
+    const convId = String(item._id);
 
     let name;
+    let avatar = null;
+    let userId = null;
 
-    if (hasCurrentUser && idStr.startsWith("direct:")) {
-      const parts = idStr.split(":"); // direct:userA:userB
+    if (convId.startsWith("direct:")) {
+      const parts = convId.split(":");
       if (parts.length === 3) {
         const [, u1, u2] = parts;
-        const me = String(currentUserId);
-        const otherId = me === String(u1) ? u2 : u1;
-        const otherName = userMap[otherId];
-
-        if (otherName) {
-          name = otherName;
+        const otherId = u1 === userIdStr ? u2 : u1;
+        userId = otherId;
+        const other = userMap[otherId];
+        if (other) {
+          name = other.name;
+          avatar = other.avatar;
         }
       }
-    }
-
-    if (!name) {
-      name =
-        last.conversationName ||
-        last.senderName ||
-        `Cuộc trò chuyện ${item._id}`;
+    } else {
+      name = last.conversationName || `Nhóm ${convId}`;
+      avatar = null;
     }
 
     return {
-      id: item._id,
+      id: convId,
+      userId,
+      partnerId: userId,
       name,
+      avatar,
       message: last.text,
       status: "Online",
       lastActive: new Date(last.createdAt).toLocaleString("vi-VN", {
@@ -94,4 +120,3 @@ async function getConversations(currentUserId) {
 module.exports = {
   getConversations,
 };
-

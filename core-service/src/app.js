@@ -12,11 +12,14 @@ const { requestLogger } = require("./middleware/requestLogger");
 
 const app = express();
 
+// Disable ETag to prevent 304 cached responses for API
+app.set("etag", false);
+
 // Core middlewares
 app.use(helmet());
 app.use(
   cors({
-    origin: "*", // TODO: restrict in production
+    origin: process.env.CORS_ORIGIN || "*",
   })
 );
 app.use(express.json());

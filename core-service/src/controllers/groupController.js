@@ -73,10 +73,13 @@ async function addMember(req, res, next) {
 
 async function updateMemberRole(req, res, next) {
   try {
+    const callerId = req.user?.id;
+    if (!callerId) return res.status(401).json({ message: "Chưa đăng nhập" });
     const group = await groupService.updateMemberRole(
       req.params.id,
       req.params.memberId,
-      req.body.role
+      req.body.role,
+      callerId
     );
     if (!group) {
       return res.status(404).json({ message: "Group or member not found" });
@@ -89,14 +92,59 @@ async function updateMemberRole(req, res, next) {
 
 async function removeMember(req, res, next) {
   try {
+    const callerId = req.user?.id;
+    if (!callerId) return res.status(401).json({ message: "Chưa đăng nhập" });
     const group = await groupService.removeMember(
       req.params.id,
-      req.params.memberId
+      req.params.memberId,
+      callerId
     );
-    if (!group) {
-      return res.status(404).json({ message: "Group not found" });
-    }
+    if (!group) return res.status(404).json({ message: "Group not found" });
     res.json(group);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getPendingJoinRequests(req, res, next) {
+  try {
+    const list = await groupService.getPendingJoinRequests(req.params.id);
+    res.json(list);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getMyJoinRequest(req, res, next) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
+    const request = await groupService.getMyJoinRequest(req.params.id, userId);
+    res.json(request || null);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function approveJoinRequest(req, res, next) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
+    const { id: groupId, requestId } = req.params;
+    const group = await groupService.approveJoinRequest(requestId, userId, groupId);
+    if (!group) return res.status(404).json({ message: "Không tìm thấy yêu cầu" });
+    res.json(group);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function rejectJoinRequest(req, res, next) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
+    await groupService.rejectJoinRequest(req.params.requestId, userId);
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }
@@ -123,6 +171,38 @@ async function updateVisibility(req, res, next) {
   }
 }
 
+async function transferLeadership(req, res, next) {
+  try {
+    const callerId = req.user?.id;
+    if (!callerId) return res.status(401).json({ message: "Chưa đăng nhập" });
+    const { newLeaderId } = req.body;
+    if (!newLeaderId) {
+      return res.status(400).json({ message: "newLeaderId là bắt buộc" });
+    }
+    const group = await groupService.transferLeadership(
+      req.params.id,
+      newLeaderId,
+      callerId
+    );
+    if (!group) return res.status(404).json({ message: "Group not found" });
+    res.json({ success: true, group });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deleteGroup(req, res, next) {
+  try {
+    const callerId = req.user?.id;
+    if (!callerId) return res.status(401).json({ message: "Chưa đăng nhập" });
+    const result = await groupService.deleteGroup(req.params.id, callerId);
+    if (!result) return res.status(404).json({ message: "Group not found" });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createGroup,
   getGroupById,
@@ -130,8 +210,14 @@ module.exports = {
   searchGroups,
   getDiscoverableGroups,
   addMember,
+  getPendingJoinRequests,
+  getMyJoinRequest,
+  approveJoinRequest,
+  rejectJoinRequest,
   updateMemberRole,
   removeMember,
   updateVisibility,
+  transferLeadership,
+  deleteGroup,
 };
 

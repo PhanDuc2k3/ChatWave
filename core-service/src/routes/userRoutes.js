@@ -21,5 +21,14 @@ router.put("/:id", userController.updateUser);
 // DELETE /api/v1/users/:id
 router.delete("/:id", userController.deleteUser);
 
+// POST /api/v1/users/:id/block
+router.post("/:id/block", userController.blockUser);
+
+// DELETE /api/v1/users/:id/block
+router.delete("/:id/block", userController.unblockUser);
+
+// GET /api/v1/users/team/:teamId
+router.get("/team/:teamId", userController.getTeam);
+
 module.exports = router;
 

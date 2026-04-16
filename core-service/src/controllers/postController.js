@@ -121,8 +121,10 @@ async function searchPosts(req, res, next) {
 
 async function votePoll(req, res, next) {
   try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
     const { optionIndex } = req.body || {};
-    const post = await postService.votePoll(req.params.id, optionIndex);
+    const post = await postService.votePoll(req.params.id, optionIndex, userId);
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }

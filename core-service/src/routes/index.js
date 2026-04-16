@@ -8,6 +8,9 @@ const chatGroupRoutes = require("./chatGroupRoutes");
 const taskRoutes = require("./taskRoutes");
 const uploadRoutes = require("./uploadRoutes");
 const friendRoutes = require("./friendRoutes");
+const chatbotSessionRoutes = require("./chatbotSessionRoutes");
+const notificationRoutes = require("./notificationRoutes");
+const aiRoutes = require("./aiRoutes");
 const { requireAuth } = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -22,6 +25,9 @@ router.use("/chat-groups", requireAuth, chatGroupRoutes);
 router.use("/tasks", requireAuth, taskRoutes);
 router.use("/upload", requireAuth, uploadRoutes);
 router.use("/friends", requireAuth, friendRoutes);
+router.use("/chatbot-sessions", requireAuth, chatbotSessionRoutes);
+router.use("/notifications", requireAuth, notificationRoutes);
+router.use("/ai", aiRoutes);
 
 module.exports = router;
 

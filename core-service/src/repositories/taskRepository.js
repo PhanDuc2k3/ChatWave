@@ -17,8 +17,20 @@ async function findByAssignee(userId) {
   return tasks;
 }
 
-async function findAll() {
-  const tasks = await Task.find().sort({ createdAt: -1 }).lean();
+async function findAll(query = {}) {
+  const filter = {};
+
+  if (query.assigneeId) {
+    filter.assigneeId = String(query.assigneeId);
+  } else if (query.userId) {
+    // Chỉ lấy task mà user là người giao HOẶC người nhận
+    filter.$or = [
+      { assignerId: String(query.userId) },
+      { assigneeId: String(query.userId) },
+    ];
+  }
+
+  const tasks = await Task.find(filter).sort({ createdAt: -1 }).lean();
   return tasks;
 }
 

@@ -37,6 +37,26 @@ async function deleteUser(id) {
   return userRepository.remove(id);
 }
 
+async function blockUser(id, reason) {
+  return userRepository.update(id, {
+    blocked: true,
+    blockReason: reason || "Blocked by AI",
+    blockedAt: new Date(),
+  });
+}
+
+async function unblockUser(id) {
+  return userRepository.update(id, {
+    blocked: false,
+    blockReason: null,
+    blockedAt: null,
+  });
+}
+
+async function getTeamById(teamId) {
+  return userRepository.findByTeam(teamId);
+}
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -44,5 +64,8 @@ module.exports = {
   updateUser,
   deleteUser,
   searchUsers,
+  blockUser,
+  unblockUser,
+  getTeamById,
 };
 

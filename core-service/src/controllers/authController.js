@@ -10,6 +10,16 @@ async function login(req, res, next) {
   }
 }
 
+async function refresh(req, res, next) {
+  try {
+    const { refreshToken } = req.body || {};
+    const result = await authService.refresh(refreshToken);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function register(req, res, next) {
   try {
     const result = await authService.register(req.body);
@@ -52,6 +62,7 @@ async function resetPassword(req, res, next) {
 module.exports = {
   login,
   register,
+  refresh,
   changePassword,
   forgotPassword,
   resetPassword,

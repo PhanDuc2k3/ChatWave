@@ -41,15 +41,23 @@ async function searchPosts(query) {
   return postRepository.search(query);
 }
 
-async function votePoll(postId, optionIndex) {
+async function votePoll(postId, optionIndex, userId) {
   const post = await postRepository.findById(postId);
   if (!post || !post.poll || !Array.isArray(post.poll.options)) return null;
   const idx = Number(optionIndex);
   if (Number.isNaN(idx) || idx < 0 || idx >= post.poll.options.length) return post;
+  const uid = String(userId || "");
+  if (!uid) return post;
 
-  const options = post.poll.options.map((opt, i) =>
-    i === idx ? { ...opt, votes: (opt.votes || 0) + 1 } : opt
-  );
+  const options = post.poll.options.map((opt, i) => {
+    let votedBy = Array.isArray(opt.votedBy) ? [...opt.votedBy] : [];
+    if (i === idx) {
+      if (!votedBy.includes(uid)) votedBy.push(uid);
+    } else {
+      votedBy = votedBy.filter((id) => id !== uid);
+    }
+    return { ...opt, votedBy, votes: votedBy.length };
+  });
 
   return postRepository.update(postId, {
     poll: {
