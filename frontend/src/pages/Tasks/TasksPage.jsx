@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ClipboardList,
   Users,
@@ -8,10 +8,12 @@ import {
   Circle,
   Loader2,
   XCircle,
+  Sparkles,
 } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { useTasks } from "../../hooks/useTasks";
 import TaskDetail from "./TaskDetail";
+import AiAnalyzeModal from "./AiAnalyzeModal";
 
 const STATUS_LABELS = {
   pending: "Chờ làm",
@@ -149,6 +151,9 @@ export default function TasksPage() {
     submitTask: handleTaskSubmitted,
   } = useTasks();
 
+  const [showAiModal, setShowAiModal] = useState(false);
+  const currentTeamId = "default-team";
+
   const tasksFiltered = tasks.filter((t) => {
     if (filter === "mine") return true;
     if (filter === "all") return true;
@@ -171,10 +176,12 @@ export default function TasksPage() {
       <h2 className="text-sm md:text-base font-semibold text-gray-800">
         Công việc đã được giao
       </h2>
-      <span className="text-xs md:text-sm text-gray-500 flex items-center gap-1">
-        <ClipboardList className="w-4 h-4" />
-        {stats.total} việc
-      </span>
+      <div className="flex items-center gap-3">
+        <span className="text-xs md:text-sm text-gray-500 flex items-center gap-1">
+          <ClipboardList className="w-4 h-4" />
+          {stats.total} việc
+        </span>
+      </div>
     </div>
   );
 
@@ -183,6 +190,18 @@ export default function TasksPage() {
       <div className="w-full h-full bg-[#F3F6FB] flex gap-4 px-3 md:px-6 py-4">
         {/* Trái: danh sách task */}
         <aside className="w-full md:w-[340px] lg:w-[360px] shrink-0 flex flex-col gap-3 overflow-hidden">
+          <div className="shrink-0 flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-gray-600">
+              Bộ lọc
+            </h3>
+            <button
+              onClick={() => setShowAiModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#FA8DAE] to-[#ff9fbd] text-white rounded-lg text-xs font-medium hover:opacity-90 transition shadow-sm"
+            >
+              <Sparkles className="w-4 h-4" />
+              Phân tích AI
+            </button>
+          </div>
           <div className="shrink-0 grid grid-cols-2 gap-2">
             <div className="bg-white rounded-xl border border-gray-200 p-2 shadow-sm">
               <p className="text-xl font-bold text-[#FA8DAE]">{stats.total}</p>
@@ -191,6 +210,10 @@ export default function TasksPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-2 shadow-sm">
               <p className="text-xl font-bold text-amber-600">{stats.pending}</p>
               <p className="text-[10px] text-gray-500">Chờ làm</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-2 shadow-sm">
+              <p className="text-xl font-bold text-green-600">{stats.done}</p>
+              <p className="text-[10px] text-gray-500">Hoàn thành</p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-2 shadow-sm">
               <p className="text-xl font-bold text-gray-500">{stats.cancelled}</p>
@@ -324,6 +347,14 @@ export default function TasksPage() {
             onTaskUpdated={handleTaskUpdated}
             onTaskDeleted={handleTaskDeleted}
             onClose={() => setSelectedTaskId(null)}
+          />
+        )}
+
+        {/* AI Analyze Modal */}
+        {showAiModal && (
+          <AiAnalyzeModal
+            teamId={currentTeamId}
+            onClose={() => setShowAiModal(false)}
           />
         )}
       </div>

@@ -35,7 +35,10 @@ export default function CreateTaskModal({
   onSuccess,
 }) {
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [descriptionWhat, setDescriptionWhat] = useState("");
+  const [descriptionPurpose, setDescriptionPurpose] = useState("");
+  const [scopeDo, setScopeDo] = useState("");
+  const [scopeDont, setScopeDont] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [assigneeName, setAssigneeName] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -49,6 +52,8 @@ export default function CreateTaskModal({
   const [expectedResults, setExpectedResults] = useState("");
   const [acceptanceCriteria, setAcceptanceCriteria] = useState("");
   const [risksNotes, setRisksNotes] = useState("");
+  const [deliverables, setDeliverables] = useState("");
+  const [references, setReferences] = useState("");
 
   const currentUser = useMemo(() => {
     try {
@@ -156,9 +161,25 @@ export default function CreateTaskModal({
     }
     try {
       setCreating(true);
+      const description = {};
+      if (descriptionWhat.trim()) description.what = descriptionWhat.trim();
+      if (descriptionPurpose.trim()) description.purpose = descriptionPurpose.trim();
+      const scopeDoArr = scopeDo.trim().split("\n").filter(Boolean);
+      if (scopeDoArr.length > 0) description.scopeDo = scopeDoArr;
+      const scopeDontArr = scopeDont.trim().split("\n").filter(Boolean);
+      if (scopeDontArr.length > 0) description.scopeDont = scopeDontArr;
+      const deliverablesArr = deliverables.trim().split("\n").filter(Boolean).map(label => ({ label, link: "" }));
+      const referencesArr = references.trim().split("\n").filter(Boolean).map(line => {
+        const match = line.match(/^(.+?)(?:\s*\((.+?)\))?$/);
+        if (match) {
+          return { label: match[1].trim(), link: match[2]?.trim() || "" };
+        }
+        return { label: line.trim(), link: "" };
+      });
+
       await taskApi.create({
         title: t,
-        description: description.trim(),
+        description: Object.keys(description).length > 0 ? description : "",
         assignerId,
         assignerName,
         assigneeId: assigneeId || null,
@@ -177,10 +198,15 @@ export default function CreateTaskModal({
           ? acceptanceCriteria.trim().split("\n").filter(Boolean).map((text) => ({ text, checked: false }))
           : [],
         risksNotes: risksNotes.trim() || null,
+        deliverables: deliverablesArr.length > 0 ? deliverablesArr : [],
+        references: referencesArr.length > 0 ? referencesArr : [],
         priority,
       });
       setTitle("");
-      setDescription("");
+      setDescriptionWhat("");
+      setDescriptionPurpose("");
+      setScopeDo("");
+      setScopeDont("");
       setAssigneeId("");
       setAssigneeName("");
       setReviewerId("");
@@ -190,6 +216,8 @@ export default function CreateTaskModal({
       setExpectedResults("");
       setAcceptanceCriteria("");
       setRisksNotes("");
+      setDeliverables("");
+      setReferences("");
       setPriority("medium");
       onSuccess?.();
     } catch (err) {
@@ -247,12 +275,52 @@ export default function CreateTaskModal({
           </Section>
 
           <Section title="Mô tả chi tiết" icon={FileText}>
-            <textarea
-              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#FA8DAE] focus:ring-1 focus:ring-[#FA8DAE] resize-none min-h-[80px]"
-              placeholder="Mô tả công việc, phạm vi, mục đích..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Task này làm gì (what)
+                </label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#FA8DAE] focus:ring-1 focus:ring-[#FA8DAE] resize-none min-h-[60px]"
+                  placeholder="VD: Lập trình module chat realtime..."
+                  value={descriptionWhat}
+                  onChange={(e) => setDescriptionWhat(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Mục đích / Bối cảnh (purpose)
+                </label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#FA8DAE] focus:ring-1 focus:ring-[#FA8DAE] resize-none min-h-[50px]"
+                  placeholder="Tại sao cần làm task này?"
+                  value={descriptionPurpose}
+                  onChange={(e) => setDescriptionPurpose(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Phạm vi sẽ làm (scope Do) - mỗi dòng 1 mục
+                </label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#FA8DAE] focus:ring-1 focus:ring-[#FA8DAE] resize-none min-h-[50px]"
+                  placeholder="Mỗi dòng là một việc sẽ làm..."
+                  value={scopeDo}
+                  onChange={(e) => setScopeDo(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Phạm vi KHÔNG làm (scope Don't) - mỗi dòng 1 mục
+                </label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#FA8DAE] focus:ring-1 focus:ring-[#FA8DAE] resize-none min-h-[50px]"
+                  placeholder="Mỗi dòng là một việc KHÔNG làm (tiền tố 'Không: ' tự thêm)..."
+                  value={scopeDont}
+                  onChange={(e) => setScopeDont(e.target.value)}
+                />
+              </div>
+            </div>
           </Section>
 
           <Section title="Người thực hiện & người review" icon={User}>
@@ -357,6 +425,24 @@ export default function CreateTaskModal({
               placeholder="Ghi chú về rủi ro, phụ thuộc..."
               value={risksNotes}
               onChange={(e) => setRisksNotes(e.target.value)}
+            />
+          </Section>
+
+          <Section title="Deliverables (tuỳ chọn)" icon={Link2}>
+            <textarea
+              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#FA8DAE] focus:ring-1 focus:ring-[#FA8DAE] resize-none min-h-[50px]"
+              placeholder="Mỗi dòng một deliverable: tên file (link)&#10;VD: Report PDF (https://...)"
+              value={deliverables}
+              onChange={(e) => setDeliverables(e.target.value)}
+            />
+          </Section>
+
+          <Section title="Tài liệu tham chiếu (tuỳ chọn)" icon={FileText}>
+            <textarea
+              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#FA8DAE] focus:ring-1 focus:ring-[#FA8DAE] resize-none min-h-[50px]"
+              placeholder="Mỗi dòng một tài liệu: tên (link)&#10;VD: Spec Doc (https://...)"
+              value={references}
+              onChange={(e) => setReferences(e.target.value)}
             />
           </Section>
 

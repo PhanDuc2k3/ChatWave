@@ -32,4 +32,18 @@ export const chatGroupApi = {
       params: { userId },
     });
   },
+
+  deleteGroup(groupId) {
+    return axiosClient.delete(`/chat-groups/${groupId}`);
+  },
+
+  transferLeadership(groupId, newLeaderId) {
+    return axiosClient.post(`/chat-groups/${groupId}/transfer-leadership`, {
+      newLeaderId,
+    });
+  },
+
+  updateAvatar(groupId, avatarUrl) {
+    return axiosClient.patch(`/chat-groups/${groupId}/avatar`, { avatar: avatarUrl });
+  },
 };

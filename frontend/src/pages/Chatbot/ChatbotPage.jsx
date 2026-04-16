@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import MainLayout from "../../layouts/MainLayout";
-import { Send, Bot, User, ClipboardList, Plus, MessageSquare, Trash2, ChevronLeft } from "lucide-react";
+import { Send, Bot, User, ClipboardList, Plus, MessageSquare, Trash2, ChevronLeft, Sparkles, CheckCircle2, Loader2 } from "lucide-react";
 import { chatbotApi } from "../../api/chatbotApi";
 import { chatbotSessionApi } from "../../api/chatbotSessionApi";
 import { friendApi } from "../../api/friendApi";
@@ -19,10 +19,13 @@ export default function ChatbotPage() {
   const [currentSession, setCurrentSession] = useState(null);
   const [messages, setMessages] = useState([GREETING]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [createTasksLoading, setCreateTasksLoading] = useState(false);
   const [createTasksModal, setCreateTasksModal] = useState(null);
+  const [aiAnalyzeResult, setAiAnalyzeResult] = useState(null);
+  const [applyLoading, setApplyLoading] = useState(false);
+  const [applySuccess, setApplySuccess] = useState(false);
   const [friendOptions, setFriendOptions] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileView, setMobileView] = useState("list"); // 'list' | 'chat'
@@ -150,10 +153,30 @@ export default function ChatbotPage() {
     }
   };
 
+  const handleApplyAiAnalyze = async (result) => {
+    if (!result?.validActions || result.validActions.length === 0) {
+      toast.error("Không có action nào để thực thi.");
+      return;
+    }
+    setApplyLoading(true);
+    setApplySuccess(false);
+    try {
+      const teamId = currentUser?.teamId || "default-team";
+      await chatbotApi.applyAiActions(result.validActions, teamId);
+      setApplySuccess(true);
+      toast.success(`✓ Đã thực thi ${result.validActions.length} thay đổi!`);
+      setAiAnalyzeResult(null);
+    } catch (err) {
+      toast.error(`✗ ${err?.message || "Lỗi khi thực thi actions"}`);
+    } finally {
+      setApplyLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || chatLoading) return;
 
     let session = currentSession;
     if (hasToken && !session) {
@@ -169,7 +192,7 @@ export default function ChatbotPage() {
     const userMessage = { role: "user", content: text };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setLoading(true);
+    setChatLoading(true);
 
     try {
       const isFirstUserMessage = messages.filter((m) => m.role === "user").length === 0;
@@ -191,19 +214,30 @@ export default function ChatbotPage() {
         role: m.role,
         content: m.content,
       }));
-      const res = await chatbotApi.chat(chatMessages);
+
+      const teamId = currentUser?.teamId || "default-team";
+      const res = await chatbotApi.chat(chatMessages, teamId);
       const assistantContent = res.content || "Xin lỗi, tôi không thể trả lời.";
-      const assistantMessage = { role: "assistant", content: assistantContent };
+      const assistantMessage = {
+        role: "assistant",
+        content: assistantContent,
+        type: res.type || "chat",
+        result: res.result || null,
+      };
       setMessages((prev) => [...prev, assistantMessage]);
+
+      if (res.type === "ai_analyze" && res.result) {
+        setAiAnalyzeResult(res.result);
+      }
 
       if (session) {
         await chatbotSessionApi.addMessage(session.id || session._id, "assistant", assistantContent);
       }
     } catch (err) {
-      toast.error(err?.message || "Không thể gửi tin nhắn.");
+      toast.error(`✗ ${err?.message || "Không thể gửi tin nhắn"}`);
       setMessages((prev) => prev.filter((m) => m !== userMessage));
     } finally {
-      setLoading(false);
+      setChatLoading(false);
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   };
@@ -329,7 +363,7 @@ export default function ChatbotPage() {
                 <button
                   type="button"
                   onClick={handleCreateTasksFromChat}
-                  disabled={loading || createTasksLoading}
+                  disabled={chatLoading || createTasksLoading}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#6CB8FF]/10 text-[#6CB8FF] hover:bg-[#6CB8FF]/20 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   <ClipboardList className="w-4 h-4" />
@@ -369,10 +403,38 @@ export default function ChatbotPage() {
                     <p className="text-sm whitespace-pre-wrap">
                       {msg.content}
                     </p>
+                    {msg.type === "ai_analyze" && msg.result && (
+                      <button
+                        onClick={() => handleApplyAiAnalyze(msg.result)}
+                        disabled={applyLoading || !msg.result.validActions?.length || applySuccess}
+                        className={`mt-3 flex items-center gap-2 px-3 py-1.5 text-white rounded-lg text-xs font-medium transition ${
+                          applySuccess
+                            ? "bg-green-500 cursor-default"
+                            : "bg-[#FA8DAE] hover:bg-[#e87a9c] disabled:opacity-50 disabled:cursor-not-allowed"
+                        }`}
+                      >
+                        {applyLoading ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Đang thực thi...
+                          </>
+                        ) : applySuccess ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Đã áp dụng!
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Apply ({msg.result.validActions?.length || 0})
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
-              {loading && (
+              {chatLoading && (
                 <div className="flex gap-3">
                   <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center bg-[#6CB8FF] text-white">
                     <Bot className="w-4 h-4" />
@@ -410,11 +472,11 @@ export default function ChatbotPage() {
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Nhập tin nhắn..."
                   className="flex-1 rounded-2xl border border-[#E2E8F0] px-4 py-2.5 text-sm outline-none focus:border-[#6CB8FF] focus:ring-1 focus:ring-[#6CB8FF]"
-                  disabled={loading}
+                  disabled={chatLoading}
                 />
                 <button
                   type="submit"
-                  disabled={loading || !input.trim()}
+                  disabled={chatLoading || !input.trim()}
                   className="w-11 h-11 rounded-full bg-[#6CB8FF] text-white flex items-center justify-center hover:bg-[#5AA3E8] disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   <Send className="w-5 h-5" />
@@ -507,7 +569,7 @@ export default function ChatbotPage() {
               <button
                 type="button"
                 onClick={handleCreateTasksFromChat}
-                disabled={loading || createTasksLoading}
+                disabled={chatLoading || createTasksLoading}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#6CB8FF]/10 text-[#6CB8FF] hover:bg-[#6CB8FF]/20 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 <ClipboardList className="w-4 h-4" />
@@ -543,10 +605,38 @@ export default function ChatbotPage() {
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  {msg.type === "ai_analyze" && msg.result && (
+                    <button
+                      onClick={() => handleApplyAiAnalyze(msg.result)}
+                      disabled={applyLoading || !msg.result.validActions?.length || applySuccess}
+                      className={`mt-3 flex items-center gap-2 px-3 py-1.5 text-white rounded-lg text-xs font-medium transition ${
+                        applySuccess
+                          ? "bg-green-500 cursor-default"
+                          : "bg-[#FA8DAE] hover:bg-[#e87a9c] disabled:opacity-50 disabled:cursor-not-allowed"
+                      }`}
+                    >
+                      {applyLoading ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Đang thực thi...
+                        </>
+                      ) : applySuccess ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Đã áp dụng!
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Apply ({msg.result.validActions?.length || 0})
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
-            {loading && (
+            {chatLoading && (
               <div className="flex gap-3">
                 <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center bg-[#6CB8FF] text-white">
                   <Bot className="w-4 h-4" />
@@ -575,11 +665,11 @@ export default function ChatbotPage() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Nhập tin nhắn..."
                 className="flex-1 rounded-2xl border border-[#E2E8F0] px-4 py-2.5 text-sm outline-none focus:border-[#6CB8FF] focus:ring-1 focus:ring-[#6CB8FF]"
-                disabled={loading}
+                disabled={chatLoading}
               />
               <button
                 type="submit"
-                disabled={loading || !input.trim()}
+                disabled={chatLoading || !input.trim()}
                 className="w-11 h-11 rounded-full bg-[#6CB8FF] text-white flex items-center justify-center hover:bg-[#5AA3E8] disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 <Send className="w-5 h-5" />

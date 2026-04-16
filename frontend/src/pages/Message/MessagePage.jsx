@@ -69,6 +69,7 @@ export default function MessagePage() {
           id: `group:${g.id || g._id}`,
           chatGroupId: g.id || g._id,
           name: g.name,
+          avatar: g.avatar || null,
           message: "Nhóm chat",
           status: "Online",
           lastActive: g.updatedAt
@@ -147,7 +148,15 @@ export default function MessagePage() {
   }, [friends, groups]);
 
   const listItems = useMemo(() => {
-    if (activeTab === "overview") return [...friends, ...groups];
+    if (activeTab === "overview") {
+      // Gộp friends + groups, sắp xếp theo thời gian mới nhất
+      const all = [...friends, ...groups];
+      return all.sort((a, b) => {
+        const ta = a.lastActive ? new Date(a.lastActive.split("/").reverse().join("-")).getTime() : 0;
+        const tb = b.lastActive ? new Date(b.lastActive.split("/").reverse().join("-")).getTime() : 0;
+        return tb - ta;
+      });
+    }
     if (activeTab === "friends") return friends;
     if (activeTab === "groups") return groups;
     if (activeTab === "unread") return unread;
@@ -255,18 +264,33 @@ export default function MessagePage() {
                         const gid =
                           group.chatGroupId ||
                           String(group.id).replace("group:", "");
-                        await chatGroupApi.leaveGroup(gid, currentUserId);
-                        setGroups((prev) =>
-                          prev.filter(
-                            (g) =>
-                              g.chatGroupId !== gid && g.id !== group.id
-                          )
-                        );
-                        setSelectedChat(null);
-                        toast.success("Đã rời nhóm.");
+                        
+                        // Check if it's a delete action
+                        if (group._action === "delete") {
+                          await chatGroupApi.deleteGroup(gid);
+                          setGroups((prev) =>
+                            prev.filter(
+                              (g) =>
+                                g.chatGroupId !== gid && g.id !== group.id
+                            )
+                          );
+                          setSelectedChat(null);
+                          toast.success("Đã giải tán nhóm.");
+                        } else {
+                          // Leave group
+                          await chatGroupApi.leaveGroup(gid, currentUserId);
+                          setGroups((prev) =>
+                            prev.filter(
+                              (g) =>
+                                g.chatGroupId !== gid && g.id !== group.id
+                            )
+                          );
+                          setSelectedChat(null);
+                          toast.success("Đã rời nhóm.");
+                        }
                       } catch (err) {
                         toast.error(
-                          err?.message || "Không rời nhóm được."
+                          err?.message || "Không thực hiện được thao tác."
                         );
                       }
                     }}
@@ -335,18 +359,31 @@ export default function MessagePage() {
                       const gid =
                         group.chatGroupId ||
                         String(group.id).replace("group:", "");
-                      await chatGroupApi.leaveGroup(gid, currentUserId);
-                      setGroups((prev) =>
-                        prev.filter(
-                          (g) =>
-                            g.chatGroupId !== gid && g.id !== group.id
-                        )
-                      );
-                      setSelectedChat(null);
-                      toast.success("Đã rời nhóm.");
+
+                      if (group._action === "delete") {
+                        await chatGroupApi.deleteGroup(gid);
+                        setGroups((prev) =>
+                          prev.filter(
+                            (g) =>
+                              g.chatGroupId !== gid && g.id !== group.id
+                          )
+                        );
+                        setSelectedChat(null);
+                        toast.success("Đã giải tán nhóm.");
+                      } else {
+                        await chatGroupApi.leaveGroup(gid, currentUserId);
+                        setGroups((prev) =>
+                          prev.filter(
+                            (g) =>
+                              g.chatGroupId !== gid && g.id !== group.id
+                          )
+                        );
+                        setSelectedChat(null);
+                        toast.success("Đã rời nhóm.");
+                      }
                     } catch (err) {
                       toast.error(
-                        err?.message || "Không rời nhóm được."
+                        err?.message || "Không thực hiện được thao tác."
                       );
                     }
                   }}
@@ -503,6 +540,7 @@ export default function MessagePage() {
                       id: `group:${gid}`,
                       chatGroupId: gid,
                       name: group.name,
+                      avatar: group.avatar || null,
                       message: "Nhóm chat",
                       status: "Online",
                       lastActive: new Date(group.createdAt).toLocaleDateString(

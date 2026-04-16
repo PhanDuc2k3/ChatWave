@@ -14,5 +14,13 @@ export const messageApi = {
   sendMessage(conversationId, payload) {
     return axiosClient.post(`/chats/${conversationId}/messages`, payload);
   },
+
+  getMedia(conversationId) {
+    return axiosClient.get(`/chats/${conversationId}/media`);
+  },
+
+  getFiles(conversationId) {
+    return axiosClient.get(`/chats/${conversationId}/files`);
+  },
 };
 

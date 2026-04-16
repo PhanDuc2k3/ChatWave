@@ -21,9 +21,10 @@ chatbotClient.interceptors.response.use(
 );
 
 export const chatbotApi = {
-  chat(messages, options = {}) {
+  chat(messages, teamId = "default-team", options = {}) {
     return chatbotClient.post("/chat/completions", {
       messages,
+      teamId,
       model: options.model || "llama-3.3-70b-versatile",
       max_tokens: options.max_tokens || 1024,
       temperature: options.temperature ?? 0.7,
@@ -32,5 +33,9 @@ export const chatbotApi = {
 
   createTasksFromChat(messages) {
     return chatbotClient.post("/chat/create-tasks", { messages });
+  },
+
+  applyAiActions(actions, teamId = "default-team") {
+    return chatbotClient.post("/ai/execute-actions", { actions, teamId });
   },
 };

@@ -150,12 +150,16 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, onTaskSubmit
       setSubmitting(false);
     }
   };
-  const hasDescription = task.description && (
-    task.description.what ||
-    task.description.purpose ||
-    (task.description.scopeDo && task.description.scopeDo.length) ||
-    (task.description.scopeDont && task.description.scopeDont.length)
-  );
+  const hasDescription = (() => {
+    if (!task.description) return false;
+    if (typeof task.description === "string") return task.description.trim().length > 0;
+    return (
+      task.description.what ||
+      task.description.purpose ||
+      (task.description.scopeDo && task.description.scopeDo.length) ||
+      (task.description.scopeDont && task.description.scopeDont.length)
+    );
+  })();
   const hasPeople = task.assignee || task.reviewer;
   const hasAcceptance = task.acceptanceCriteria && task.acceptanceCriteria.length > 0;
   const hasDeliverables = task.deliverables && task.deliverables.length > 0;
@@ -212,7 +216,7 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, onTaskSubmit
             <>
               <button type="button" onClick={() => { setShowEdit(true); setEditPayload({
                 title: task.title,
-                description: task.description?.what || (typeof task.description === "string" ? task.description : "") || "",
+                description: typeof task.description === "object" && task.description !== null ? task.description : { what: task.description || "", purpose: "", scopeDo: [], scopeDont: [] },
                 dueDate: task.dueDate || "",
                 priority: task.priority || "medium",
               }); }} title="Sửa task" className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-[#FA8DAE]/20 hover:text-[#FA8DAE]">
@@ -238,35 +242,39 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, onTaskSubmit
           {/* 2. Mô tả chi tiết */}
           <Section title="Mô tả chi tiết" icon={FileText}>
             {hasDescription ? (
-              <div className="space-y-3">
-                {task.description.what && (
-                  <div>
-                    <p className="font-medium text-gray-800">Task này làm gì</p>
-                    <p className="text-gray-600">{task.description.what}</p>
-                  </div>
-                )}
-                {task.description.purpose && (
-                  <div>
-                    <p className="font-medium text-gray-800">Mục đích / bối cảnh</p>
-                    <p className="text-gray-600">{task.description.purpose}</p>
-                  </div>
-                )}
-                {(task.description.scopeDo?.length > 0 || task.description.scopeDont?.length > 0) && (
-                  <div>
-                    <p className="font-medium text-gray-800 mb-1">Phạm vi làm và không làm</p>
-                    <ul className="list-disc list-inside space-y-1 text-gray-600">
-                      {task.description.scopeDo?.map((item, i) => (
-                        <li key={`do-${i}`}>{item}</li>
-                      ))}
-                      {task.description.scopeDont?.map((item, i) => (
-                        <li key={`dont-${i}`} className="text-amber-700">
-                          <span className="font-medium">Không:</span> {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              typeof task.description === "string" ? (
+                <p className="text-gray-600 whitespace-pre-wrap">{task.description}</p>
+              ) : (
+                <div className="space-y-3">
+                  {task.description.what && (
+                    <div>
+                      <p className="font-medium text-gray-800">Task này làm gì</p>
+                      <p className="text-gray-600">{task.description.what}</p>
+                    </div>
+                  )}
+                  {task.description.purpose && (
+                    <div>
+                      <p className="font-medium text-gray-800">Mục đích / bối cảnh</p>
+                      <p className="text-gray-600">{task.description.purpose}</p>
+                    </div>
+                  )}
+                  {(task.description.scopeDo?.length > 0 || task.description.scopeDont?.length > 0) && (
+                    <div>
+                      <p className="font-medium text-gray-800 mb-1">Phạm vi làm và không làm</p>
+                      <ul className="list-disc list-inside space-y-1 text-gray-600">
+                        {task.description.scopeDo?.map((item, i) => (
+                          <li key={`do-${i}`}>{item}</li>
+                        ))}
+                        {task.description.scopeDont?.map((item, i) => (
+                          <li key={`dont-${i}`} className="text-amber-700">
+                            <span className="font-medium">Không:</span> {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )
             ) : (
               <EmptyNote />
             )}
@@ -336,7 +344,6 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, onTaskSubmit
             )}
           </Section>
 
-          {/* 8. Deliverables */}
           <Section title="Deliverables (sản phẩm bàn giao)" icon={Link2}>
             {hasDeliverables ? (
               <ul className="space-y-1">
@@ -608,9 +615,21 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, onTaskSubmit
     }
     setSaving(true);
     try {
+      // Xử lý description
+      let descriptionToSend = typeof editPayload.description === "object" ? editPayload.description : { what: editPayload.description || "", purpose: "", scopeDo: [], scopeDont: [] };
+      if (typeof descriptionToSend === "object") {
+        // Loại bỏ các trường rỗng
+        const cleaned = {};
+        if (descriptionToSend.what) cleaned.what = descriptionToSend.what;
+        if (descriptionToSend.purpose) cleaned.purpose = descriptionToSend.purpose;
+        if (Array.isArray(descriptionToSend.scopeDo) && descriptionToSend.scopeDo.length > 0) cleaned.scopeDo = descriptionToSend.scopeDo;
+        if (Array.isArray(descriptionToSend.scopeDont) && descriptionToSend.scopeDont.length > 0) cleaned.scopeDont = descriptionToSend.scopeDont;
+        descriptionToSend = Object.keys(cleaned).length > 0 ? cleaned : "";
+      }
+
       const updated = await taskApi.update(task.id, {
         title: editPayload.title.trim(),
-        description: editPayload.description?.trim() || "",
+        description: descriptionToSend,
         dueDate: editPayload.dueDate || "",
         priority: editPayload.priority || "medium",
       });
@@ -637,8 +656,20 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, onTaskSubmit
                 <input value={editPayload.title || ""} onChange={(e) => setEditPayload((p) => ({ ...p, title: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Mô tả</label>
-                <textarea value={editPayload.description || ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: e.target.value }))} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" />
+                <label className="block text-xs font-medium text-gray-600 mb-1">M�� tả (Task này làm gì)</label>
+                <textarea value={typeof editPayload.description === "object" ? editPayload.description?.what || "" : editPayload.description || ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: { ...(typeof p.description === "object" ? p.description : { what: "", purpose: "", scopeDo: [], scopeDont: [] }), what: e.target.value } }))} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" placeholder="Task này làm gì..." />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Mục đích/Bối cảnh</label>
+                <textarea value={typeof editPayload.description === "object" ? editPayload.description?.purpose || "" : ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: { ...(typeof p.description === "object" ? p.description : { what: "", purpose: "", scopeDo: [], scopeDont: [] }), purpose: e.target.value } }))} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" placeholder="Mục đích..." />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Phạm vi sẽ làm (mỗi dòng 1 mục)</label>
+                <textarea value={typeof editPayload.description === "object" ? (editPayload.description?.scopeDo || []).join("\n") : ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: { ...(typeof p.description === "object" ? p.description : { what: "", purpose: "", scopeDo: [], scopeDont: [] }), scopeDo: e.target.value.split("\n").filter(Boolean) } }))} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" placeholder="Sẽ làm gì..." />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Phạm vi KHÔNG làm (mỗi dòng 1 mục)</label>
+                <textarea value={typeof editPayload.description === "object" ? (editPayload.description?.scopeDont || []).join("\n") : ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: { ...(typeof p.description === "object" ? p.description : { what: "", purpose: "", scopeDo: [], scopeDont: [] }), scopeDont: e.target.value.split("\n").filter(Boolean) } }))} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" placeholder="Không làm gì..." />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Hạn</label>
@@ -677,8 +708,20 @@ export default function TaskDetail({ task, onUpdateStatus, onClose, onTaskSubmit
                 <input value={editPayload.title || ""} onChange={(e) => setEditPayload((p) => ({ ...p, title: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Mô tả</label>
-                <textarea value={editPayload.description || ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: e.target.value }))} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" />
+                <label className="block text-xs font-medium text-gray-600 mb-1">Mô tả (Task này làm gì)</label>
+                <textarea value={typeof editPayload.description === "object" ? editPayload.description?.what || "" : editPayload.description || ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: { ...(typeof p.description === "object" ? p.description : { what: "", purpose: "", scopeDo: [], scopeDont: [] }), what: e.target.value } }))} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" placeholder="Task này làm gì..." />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Mục đích/Bối cảnh</label>
+                <textarea value={typeof editPayload.description === "object" ? editPayload.description?.purpose || "" : ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: { ...(typeof p.description === "object" ? p.description : { what: "", purpose: "", scopeDo: [], scopeDont: [] }), purpose: e.target.value } }))} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" placeholder="Mục đích..." />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Phạm vi sẽ làm (mỗi dòng 1 mục)</label>
+                <textarea value={typeof editPayload.description === "object" ? (editPayload.description?.scopeDo || []).join("\n") : ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: { ...(typeof p.description === "object" ? p.description : { what: "", purpose: "", scopeDo: [], scopeDont: [] }), scopeDo: e.target.value.split("\n").filter(Boolean) } }))} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" placeholder="Sẽ làm gì..." />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Phạm vi KHÔNG làm (mỗi dòng 1 mục)</label>
+                <textarea value={typeof editPayload.description === "object" ? (editPayload.description?.scopeDont || []).join("\n") : ""} onChange={(e) => setEditPayload((p) => ({ ...p, description: { ...(typeof p.description === "object" ? p.description : { what: "", purpose: "", scopeDo: [], scopeDont: [] }), scopeDont: e.target.value.split("\n").filter(Boolean) } }))} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" placeholder="Không làm gì..." />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Hạn</label>

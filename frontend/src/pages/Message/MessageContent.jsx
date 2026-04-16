@@ -11,13 +11,18 @@ import {
   Info,
   User,
   Bell,
+  BellOff,
   Search,
   ImagePlus,
   X,
   Crown,
-  Shield,
   UserMinus,
   ArrowLeft,
+  Image,
+  FileText,
+  Download,
+  ZoomIn,
+  FolderOpen,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../context/ConfirmContext";
@@ -30,7 +35,7 @@ import { chatGroupApi } from "../../api/chatGroupApi";
 import HomePostCard from "../Home/HomePostCard";
 
 const CHAT_GROUP_ROLE_LABELS = {
-  owner: "Chủ nhóm",
+  leader: "Trưởng nhóm",
   admin: "Phó nhóm",
   member: "Thành viên",
 };
@@ -64,7 +69,29 @@ export default function MessageContent({
   const [pendingImageUrl, setPendingImageUrl] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const navigate = useNavigate();
+
+  // Trạng thái thông báo
+  const [notificationsMuted, setNotificationsMuted] = useState(false);
+
+  // Modal tìm kiếm tin nhắn
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+
+  // Modal chuyển quyền trưởng nhóm
+  const [showTransferModal, setShowTransferModal] = useState(false);
+
+  // Modal media/files
+  const [showMediaModal, setShowMediaModal] = useState(false);
+  const [showFilesModal, setShowFilesModal] = useState(false);
+  const [mediaList, setMediaList] = useState([]);
+  const [filesList, setFilesList] = useState([]);
+  const [loadingMedia, setLoadingMedia] = useState(false);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState(null);
 
   const EMOJI_LIST = [
     "😀", "😃", "😄", "😁", "😅", "😂", "🤣", "🙂", "🙃", "😉",
@@ -123,7 +150,8 @@ export default function MessageContent({
 
     const handleHistory = ({ conversationId: cid, messages: history }) => {
       if (!isMounted || cid !== conversationId) return;
-      setMessages(history || []);
+      const msgs = Array.isArray(history) ? history : (history?.items || []);
+      setMessages(msgs);
     };
 
     const handleNewMessage = (msg) => {
@@ -140,7 +168,15 @@ export default function MessageContent({
         setLoading(true);
         const data = await messageApi.getMessages(conversationId);
         if (isMounted) {
-          setMessages(data || []);
+          const msgs = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+          const mapped = msgs.map((m) => ({
+            ...m,
+            id: m.id || m._id,
+            senderId: m.senderId || m.sender,
+            text: m.text || m.content || "",
+            imageUrl: m.imageUrl,
+          }));
+          setMessages(mapped);
         }
       } catch (err) {
         if (isMounted) {
@@ -391,6 +427,38 @@ export default function MessageContent({
     });
   };
 
+  const formatDateLabel = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const isToday =
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+
+    const isYesterday =
+      d.getDate() === yesterday.getDate() &&
+      d.getMonth() === yesterday.getMonth() &&
+      d.getFullYear() === yesterday.getFullYear();
+
+    if (isToday) return "Hôm nay";
+    if (isYesterday) return "Hôm qua";
+    return d.toLocaleDateString("vi-VN", {
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit",
+    });
+  };
+
+  const getDateKey = (iso) => {
+    if (!iso) return "unknown";
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  };
+
   const POST_SHARE_PREFIX = "[POST_SHARE]";
 
   const parsePostShareMeta = (text) => {
@@ -407,6 +475,58 @@ export default function MessageContent({
   const handleOpenPostPreview = (meta) => {
     if (!meta || !meta.postId) return;
     navigate(`/?postId=${encodeURIComponent(meta.postId)}`);
+  };
+
+  const handleSearchMessages = async () => {
+    if (!searchQuery.trim() || !selected) return;
+    setSearching(true);
+    try {
+      const conversationId = String(selected.id);
+      const data = await messageApi.getMessages(conversationId);
+      const allMessages = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+      const q = searchQuery.toLowerCase();
+      const results = allMessages
+        .filter((m) => (m.text || m.content || "").toLowerCase().includes(q))
+        .map((m, idx) => ({
+          ...m,
+          id: m.id || m._id || `search-${idx}`,
+        }));
+      setSearchResults(results);
+    } catch {
+      toast.error("Không tìm kiếm được tin nhắn.");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleOpenMedia = async () => {
+    if (!selected) return;
+    setShowMediaModal(true);
+    setLoadingMedia(true);
+    try {
+      const data = await messageApi.getMedia(String(selected.id));
+      setMediaList(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Không tải được media.");
+      setMediaList([]);
+    } finally {
+      setLoadingMedia(false);
+    }
+  };
+
+  const handleOpenFiles = async () => {
+    if (!selected) return;
+    setShowFilesModal(true);
+    setLoadingFiles(true);
+    try {
+      const data = await messageApi.getFiles(String(selected.id));
+      setFilesList(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Không tải được file.");
+      setFilesList([]);
+    } finally {
+      setLoadingFiles(false);
+    }
   };
 
   const renderMessageBody = (msg) => {
@@ -437,7 +557,6 @@ export default function MessageContent({
       </div>
     );
     }
-    if (!msg.text && !msg.imageUrl) return null;
     return (
       <div className="space-y-1">
         {msg.imageUrl && (
@@ -452,7 +571,9 @@ export default function MessageContent({
         )}
         {msg.text ? (
           <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
-        ) : null}
+        ) : (
+          <p className="text-sm text-gray-400 italic">Tin nhắn trống</p>
+        )}
       </div>
     );
   };
@@ -534,10 +655,15 @@ export default function MessageContent({
           </div>
 
           {/* Vùng tin nhắn */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
             {loading && (
               <p className="text-xs text-gray-400 text-center">
                 Đang tải tin nhắn...
+              </p>
+            )}
+            {!loading && messages.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-8">
+                Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!
               </p>
             )}
             {messages.map((msg, index) => {
@@ -545,55 +671,67 @@ export default function MessageContent({
               const isLast = index === messages.length - 1;
               const isEditing = editingMessageId === msg.id;
               const isDeleted = msg.isDeleted;
+              const safeId = msg.id || `msg-${index}`;
+
+              const showDateLabel = index === 0 ||
+                getDateKey(messages[index - 1]?.createdAt) !== getDateKey(msg.createdAt);
 
               return (
-                <div
-                  key={msg.id}
-                  ref={isLast ? messagesEndRef : null}
-                  className={`flex ${isMe ? "justify-end" : "justify-start"} group`}
-                >
+                <React.Fragment key={safeId}>
+                  {showDateLabel && (
+                    <div className="flex items-center justify-center my-2">
+                      <span className="text-[11px] text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
+                        {formatDateLabel(msg.createdAt)}
+                      </span>
+                    </div>
+                  )}
                   <div
-                    className={`max-w-[80%] md:max-w-[65%] lg:max-w-[55%] rounded-2xl px-4 py-2 relative ${
-                      isMe
-                        ? "bg-[#F9C96D] text-gray-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
+                    data-msg-id={safeId}
+                    ref={isLast ? messagesEndRef : null}
+                    className={`flex ${isMe ? "justify-end" : "justify-start"} group`}
                   >
-                    {!isMe && (
-                      <p className="text-[10px] text-gray-500 mb-0.5">
-                        {msg.senderName}
-                      </p>
-                    )}
-                    {isEditing ? (
-                      <div className="space-y-2">
-                        <textarea
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="w-full text-sm border rounded-lg px-2 py-1 min-h-[60px]"
-                          autoFocus
-                        />
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={handleSaveEdit}
-                            className="text-xs px-2 py-1 bg-[#FA8DAE] text-white rounded"
-                          >
-                            Lưu
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setEditingMessageId(null); setEditText(""); }}
-                            className="text-xs px-2 py-1 bg-gray-300 rounded"
-                          >
-                            Hủy
-                          </button>
+                    <div
+                      className={`max-w-[80%] md:max-w-[65%] lg:max-w-[55%] rounded-2xl px-4 py-2 relative ${
+                        isMe
+                          ? "bg-[#F9C96D] text-gray-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {!isMe && (
+                        <p className="text-[10px] text-gray-500 mb-0.5">
+                          {msg.senderName}
+                        </p>
+                      )}
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            className="w-full text-sm border rounded-lg px-2 py-1 min-h-[60px]"
+                            autoFocus
+                          />
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={handleSaveEdit}
+                              className="text-xs px-2 py-1 bg-[#FA8DAE] text-white rounded"
+                            >
+                              Lưu
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setEditingMessageId(null); setEditText(""); }}
+                              className="text-xs px-2 py-1 bg-gray-300 rounded"
+                            >
+                              Hủy
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ) : isDeleted ? (
-                      <p className="text-sm text-gray-400 italic">
-                        Tin nhắn đã bị thu hồi
-                      </p>
-                    ) : (
+                      ) : isDeleted ? (
+                        <p className="text-sm text-gray-400 italic">
+                          Tin nhắn đã bị thu hồi
+                        </p>
+                      ) : (
                       <>
                         {renderMessageBody(msg)}
                         <div className="flex items-center gap-1 mt-1">
@@ -628,6 +766,7 @@ export default function MessageContent({
                     )}
                   </div>
                 </div>
+                </React.Fragment>
               );
             })}
             {Object.keys(typingUsers).length > 0 && (
@@ -807,28 +946,39 @@ export default function MessageContent({
 
             {/* Hàng icon hành động nhanh */}
             <div className="mt-4 flex items-center justify-center gap-4">
-              <a
-                href={selected.profileUrl || "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="flex flex-col items-center gap-1 text-[11px] text-[#EA580C]"
-              >
-                <span className="w-9 h-9 rounded-full bg-[#FFEDD5] flex items-center justify-center text-[#EA580C]">
-                  <User className="w-4 h-4" />
-                </span>
-                <span className="max-w-[70px] truncate">Trang cá nhân</span>
-              </a>
+              {!selected.isChatGroup && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const uid = selected.userId || selected.partnerId || null;
+                    if (uid && !uid.startsWith("direct:") && !uid.startsWith("group:")) {
+                      navigate(`/profile/${uid}`);
+                    }
+                  }}
+                  className="flex flex-col items-center gap-1 text-[11px] text-[#EA580C]"
+                >
+                  <span className="w-9 h-9 rounded-full bg-[#FFEDD5] flex items-center justify-center text-[#EA580C]">
+                    <User className="w-4 h-4" />
+                  </span>
+                  <span className="max-w-[70px] truncate">Trang cá nhân</span>
+                </button>
+              )}
               <button
                 type="button"
+                onClick={() => {
+                  setNotificationsMuted((prev) => !prev);
+                  toast.success(notificationsMuted ? "Đã bật thông báo." : "Đã tắt thông báo.");
+                }}
                 className="flex flex-col items-center gap-1 text-[11px] text-[#EA580C]"
               >
-                <span className="w-9 h-9 rounded-full bg-[#FFEDD5] flex items-center justify-center text-[#EA580C]">
-                  <Bell className="w-4 h-4" />
+                <span className={`w-9 h-9 rounded-full flex items-center justify-center ${notificationsMuted ? "bg-red-50 text-red-500" : "bg-[#FFEDD5] text-[#EA580C]"}`}>
+                  {notificationsMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                 </span>
-                <span className="max-w-[70px] truncate">Tắt thông báo</span>
+                <span className="max-w-[70px] truncate">{notificationsMuted ? "Bật thông báo" : "Tắt thông báo"}</span>
               </button>
               <button
                 type="button"
+                onClick={() => setShowSearchModal(true)}
                 className="flex flex-col items-center gap-1 text-[11px] text-[#EA580C]"
               >
                 <span className="w-9 h-9 rounded-full bg-[#FFEDD5] flex items-center justify-center text-[#EA580C]">
@@ -849,25 +999,18 @@ export default function MessageContent({
                   {groupDetails.members.map((m) => {
                     const role =
                       m.userId === groupDetails.ownerId
-                        ? "owner"
-                        : (m.role || "member");
+                        ? "leader"
+                        : "member";
                     const myRole =
                       groupDetails.members.find(
                         (x) => x.userId === currentUserId
                       )?.role ||
-                      (groupDetails.ownerId === currentUserId ? "owner" : "member");
-                    const canManage =
-                      myRole === "owner" || myRole === "admin";
-                    const canAssignAdmin = myRole === "owner";
-                    const canChangeRole =
-                      canManage &&
-                      m.userId !== currentUserId &&
-                      role !== "owner" &&
-                      (role !== "admin" || canAssignAdmin);
+                      (groupDetails.ownerId === currentUserId ? "leader" : "member");
+                    const canTransferOwner = myRole === "leader" && m.userId !== currentUserId;
                     const canKick =
-                      canManage &&
+                      myRole === "leader" &&
                       m.userId !== currentUserId &&
-                      role !== "owner";
+                      role !== "leader";
 
                     return (
                       <div
@@ -880,62 +1023,57 @@ export default function MessageContent({
                           </span>
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 ${
-                              role === "owner"
+                              role === "leader"
                                 ? "bg-amber-100 text-amber-800"
-                                : role === "admin"
-                                ? "bg-purple-100 text-purple-800"
                                 : "bg-gray-100 text-gray-600"
                             }`}
                           >
-                            {role === "owner" && (
+                            {role === "leader" && (
                               <Crown className="w-3 h-3" />
-                            )}
-                            {role === "admin" && (
-                              <Shield className="w-3 h-3" />
                             )}
                             {role === "member" && (
                               <User className="w-3 h-3" />
                             )}
-                            {CHAT_GROUP_ROLE_LABELS[role] || role}
+                            {role === "leader" ? "Trưởng nhóm" : "Thành viên"}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          {canChangeRole && (
-                            <select
-                              value={role}
+                          {canTransferOwner && (
+                            <button
+                              type="button"
+                              title="Chuyển trưởng nhóm"
                               disabled={!!updatingRole}
-                              onChange={async (e) => {
-                                const newRole = e.target.value;
-                                if (newRole === role) return;
+                              onClick={async () => {
+                                if (
+                                  !(await confirm(
+                                    `Chuyển quyền trưởng nhóm cho ${m.displayName}? Bạn sẽ trở thành thành viên thường.`
+                                  ))
+                                )
+                                  return;
                                 setUpdatingRole(m.userId);
                                 try {
-                                  await chatGroupApi.updateMemberRole(
+                                  await chatGroupApi.transferLeadership(
                                     selected.chatGroupId,
-                                    m.userId,
-                                    newRole
+                                    m.userId
                                   );
-                                  const updated =
-                                    await chatGroupApi.getById(
-                                      selected.chatGroupId
-                                    );
+                                  const updated = await chatGroupApi.getById(
+                                    selected.chatGroupId
+                                  );
                                   setGroupDetails(updated);
-                                  toast.success("Đã cập nhật vai trò.");
+                                  toast.success(`Đã chuyển quyền trưởng nhóm cho ${m.displayName}.`);
                                 } catch (err) {
                                   toast.error(
                                     err?.response?.data?.message ||
-                                      "Không thể cập nhật vai trò."
+                                      "Không thể chuyển quyền trưởng nhóm."
                                   );
                                 } finally {
                                   setUpdatingRole(null);
                                 }
                               }}
-                              className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-amber-600 hover:bg-amber-50 transition"
                             >
-                              {canAssignAdmin && (
-                                <option value="admin">Phó nhóm</option>
-                              )}
-                              <option value="member">Thành viên</option>
-                            </select>
+                              <Crown className="w-4 h-4" />
+                            </button>
                           )}
                           {canKick && (
                             <button
@@ -998,28 +1136,66 @@ export default function MessageContent({
                 <span>Tùy chỉnh đoạn chat</span>
                 <span className="text-xs text-gray-400">›</span>
               </button>
+              {groupDetails?.ownerId === currentUserId && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      !(await confirm(
+                        `Giải tán nhóm "${groupDetails.name}"? Tất cả tin nhắn sẽ bị xóa và không thể khôi phục.`
+                      ))
+                    )
+                      return;
+                    try {
+                      await chatGroupApi.deleteGroup(selected.chatGroupId);
+                      toast.success("Đã giải tán nhóm.");
+                      setShowInfo(false);
+                      if (onLeaveGroup) onLeaveGroup({ ...selected, chatGroupId, _action: "delete" });
+                    } catch (err) {
+                      toast.error(
+                        err?.response?.data?.message || "Không thể giải tán nhóm."
+                      );
+                    }
+                  }}
+                  className="w-full flex items-center justify-between px-2 py-2 rounded-lg hover:bg-red-50 text-red-600"
+                >
+                  <span>Giải tán nhóm</span>
+                  <span className="text-xs">›</span>
+                </button>
+              )}
             </div>
 
             {/* Liên kết và hành động nhanh */}
             <div className="pt-2 border-t border-gray-100 space-y-2">
-              <a
-                href={selected.profileUrl || "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full flex items-center justify-between px-2 py-2 rounded-lg hover:bg-[#FFF7F0] text-left"
-              >
-                <span>Trang cá nhân Facebook</span>
-                <span className="text-xs text-gray-400">↗</span>
-              </a>
+              {!selected.isChatGroup && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const uid = selected.userId || selected.partnerId || null;
+                    if (uid && !uid.startsWith("direct:") && !uid.startsWith("group:")) {
+                      navigate(`/profile/${uid}`);
+                    }
+                  }}
+                  className="w-full flex items-center justify-between px-2 py-2 rounded-lg hover:bg-[#FFF7F0] text-left"
+                >
+                  <span>Trang cá nhân</span>
+                  <span className="text-xs text-gray-400">↗</span>
+                </button>
+              )}
               <button
                 type="button"
+                onClick={() => {
+                  setNotificationsMuted((prev) => !prev);
+                  toast.success(notificationsMuted ? "Đã bật thông báo." : "Đã tắt thông báo.");
+                }}
                 className="w-full flex items-center justify-between px-2 py-2 rounded-lg hover:bg-[#FFF7F0]"
               >
-                <span>Tắt thông báo đoạn chat</span>
+                <span>{notificationsMuted ? "Bật thông báo" : "Tắt thông báo đoạn chat"}</span>
                 <span className="text-xs text-gray-400">›</span>
               </button>
               <button
                 type="button"
+                onClick={() => setShowSearchModal(true)}
                 className="w-full flex items-center justify-between px-2 py-2 rounded-lg hover:bg-[#FFF7F0]"
               >
                 <span>Tìm kiếm trong đoạn chat</span>
@@ -1034,6 +1210,7 @@ export default function MessageContent({
               <div className="space-y-1">
                 <button
                   type="button"
+                  onClick={handleOpenMedia}
                   className="w-full flex items-center justify-between px-2 py-2 rounded-lg hover:bg-[#FFF7F0]"
                 >
                   <span>File phương tiện</span>
@@ -1041,6 +1218,7 @@ export default function MessageContent({
                 </button>
                 <button
                   type="button"
+                  onClick={handleOpenFiles}
                   className="w-full flex items-center justify-between px-2 py-2 rounded-lg hover:bg-[#FFF7F0]"
                 >
                   <span>File</span>
@@ -1060,6 +1238,226 @@ export default function MessageContent({
             </div>
           </div>
         </aside>
+      )}
+
+      {/* Modal tìm kiếm tin nhắn */}
+      {showSearchModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center pt-20 px-3">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl max-h-[70vh] flex flex-col">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm tin nhắn..."
+                  className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-full text-sm outline-none focus:border-[#FA8DAE]"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSearchMessages();
+                  }}
+                  autoFocus
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleSearchMessages}
+                disabled={searching}
+                className="px-4 py-1.5 text-xs rounded-full bg-[#FA8DAE] text-white font-semibold hover:opacity-90 disabled:opacity-60"
+              >
+                {searching ? "Tìm..." : "Tìm"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSearchModal(false);
+                  setSearchQuery("");
+                  setSearchResults([]);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-lg px-2"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+              {searchResults.length === 0 && searchQuery && !searching && (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  Không tìm thấy tin nhắn nào.
+                </p>
+              )}
+              {searchResults.length === 0 && !searchQuery && (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  Nhập từ khóa để tìm tin nhắn.
+                </p>
+              )}
+              {searchResults.map((msg, idx) => {
+                const safeId = msg.id || `search-${idx}`;
+                return (
+                <div
+                  key={safeId}
+                  className="p-3 rounded-xl hover:bg-gray-50 cursor-pointer border border-gray-100"
+                  onClick={() => {
+                    setShowSearchModal(false);
+                    const container = messagesContainerRef.current;
+                    const msgEl = container?.querySelector(`[data-msg-id="${msg.id || safeId}"]`);
+                    if (msgEl && container) {
+                      container.scrollTo({
+                        top: msgEl.offsetTop - container.clientHeight / 2,
+                        behavior: "smooth",
+                      });
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold text-[#FA8DAE]">
+                      {msg.senderName}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {msg.createdAt ? new Date(msg.createdAt).toLocaleString("vi-VN") : ""}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700">{msg.text || msg.content}</p>
+                </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Media */}
+      {showMediaModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <Image className="w-5 h-5" />
+                File phương tiện
+              </h2>
+              <button
+                type="button"
+                onClick={() => { setShowMediaModal(false); setSelectedMedia(null); }}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              {loadingMedia ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="animate-spin w-8 h-8 border-4 border-[#FA8DAE] border-t-transparent rounded-full" />
+                </div>
+              ) : mediaList.length === 0 ? (
+                <div className="text-center py-10">
+                  <Image className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-400">Chưa có file phương tiện nào.</p>
+                </div>
+              ) : selectedMedia ? (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMedia(null)}
+                    className="flex items-center gap-2 text-sm text-[#FA8DAE] hover:underline"
+                  >
+                    ← Quay lại
+                  </button>
+                  <img
+                    src={selectedMedia.url}
+                    alt=""
+                    className="w-full max-h-[70vh] object-contain rounded-xl bg-gray-50"
+                  />
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <span>{selectedMedia.senderName} • {selectedMedia.createdAt ? new Date(selectedMedia.createdAt).toLocaleString("vi-VN") : ""}</span>
+                    <a
+                      href={selectedMedia.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[#FA8DAE] hover:underline"
+                    >
+                      <Download className="w-4 h-4" /> Mở
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {mediaList.map((media) => (
+                    <button
+                      key={media.id}
+                      type="button"
+                      onClick={() => setSelectedMedia(media)}
+                      className="aspect-square rounded-lg overflow-hidden hover:ring-2 hover:ring-[#FA8DAE] transition"
+                    >
+                      <img
+                        src={media.url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Files */}
+      {showFilesModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <FolderOpen className="w-5 h-5" />
+                File
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowFilesModal(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingFiles ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="animate-spin w-8 h-8 border-4 border-[#FA8DAE] border-t-transparent rounded-full" />
+                </div>
+              ) : filesList.length === 0 ? (
+                <div className="text-center py-10">
+                  <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-400">Chưa có file nào.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filesList.map((file) => (
+                    <div
+                      key={file.id}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-[#FFF0F5] flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5 text-[#FA8DAE]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{file.fileName}</p>
+                        <p className="text-xs text-gray-400">{file.senderName} • {file.createdAt ? new Date(file.createdAt).toLocaleString("vi-VN") : ""}</p>
+                      </div>
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-9 h-9 rounded-full flex items-center justify-center bg-[#FFF0F5] text-[#FA8DAE] hover:bg-[#FFE0EB] transition shrink-0"
+                      >
+                        <Download className="w-4 h-4" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
