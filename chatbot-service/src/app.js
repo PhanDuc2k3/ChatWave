@@ -4,6 +4,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 
 const chatRoutes = require("./routes/chatRoutes");
+const aiRoutes = require("./routes/aiRoutes");
 const { notFound } = require("./middleware/notFound");
 const { errorHandler } = require("./middleware/errorHandler");
 
@@ -18,6 +19,7 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/v1", chatRoutes);
+app.use("/api/v1/ai", aiRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
