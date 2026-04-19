@@ -23,7 +23,11 @@ app.use(
   })
 );
 app.use(express.json());
-app.use(morgan("dev"));
+
+// Request logging - only in development or when explicitly enabled
+if (process.env.NODE_ENV !== "production" || process.env.ENABLE_ACCESS_LOGS === "true") {
+  app.use(morgan("dev"));
+}
 app.use(requestLogger);
 
 // Healthcheck

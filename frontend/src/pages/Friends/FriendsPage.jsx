@@ -1,13 +1,93 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, UserPlus, Gift, List } from "lucide-react";
+import { Users, UserPlus, Gift, List, ChevronLeft, ChevronRight } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { friendApi } from "../../api/friendApi";
 import { useFriends } from "../../hooks/useFriends";
 import toast from "react-hot-toast";
 
+function SuggestionCard({ user, onAdd, onProfile }) {
+  const initial = (user.username || user.email || "U")[0].toUpperCase();
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col w-44 shrink-0">
+      <div
+        onClick={onProfile}
+        className="h-32 bg-gradient-to-br from-[#FFB3C6] to-[#FA8DAE] flex items-center justify-center cursor-pointer hover:opacity-90 transition overflow-hidden"
+      >
+        {user.avatar ? (
+          <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-4xl font-semibold text-white">{initial}</span>
+        )}
+      </div>
+      <div className="p-3 flex-1 flex flex-col gap-1.5">
+        <p className="text-sm font-semibold text-gray-900 truncate text-center">{user.username || user.email}</p>
+        {user.mutualCount > 0 && (
+          <p className="text-[11px] text-gray-500 text-center">{user.mutualCount} bạn chung</p>
+        )}
+        <div className="mt-auto flex flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={onAdd}
+            className="w-full rounded-full bg-[#FA8DAE] text-white text-xs font-semibold py-1.5 hover:bg-[#e87a9c] transition"
+          >
+            Thêm bạn bè
+          </button>
+          <button
+            type="button"
+            onClick={onProfile}
+            className="w-full rounded-full bg-gray-100 text-gray-700 text-xs font-semibold py-1.5 hover:bg-gray-200 transition"
+          >
+            Xem trang cá nhân
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RequestCard({ req, onAccept, onDecline, onProfile }) {
+  const initial = (req.otherUserName || "U")[0].toUpperCase();
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col w-44 shrink-0">
+      <div
+        onClick={onProfile}
+        className="h-32 bg-gradient-to-br from-[#FFE6DD] to-[#FFB088] flex items-center justify-center cursor-pointer hover:opacity-90 transition overflow-hidden"
+      >
+        {req.avatar ? (
+          <img src={req.avatar} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-4xl font-semibold text-white">{initial}</span>
+        )}
+      </div>
+      <div className="p-3 flex-1 flex flex-col gap-1.5">
+        <p className="text-sm font-semibold text-gray-900 truncate text-center">{req.otherUserName}</p>
+        <p className="text-[11px] text-gray-500 text-center">Lời mời kết bạn</p>
+        <div className="mt-auto flex flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={onAccept}
+            className="w-full rounded-full bg-[#F9C96D] text-gray-800 text-xs font-semibold py-1.5 hover:bg-[#F7B944] transition"
+          >
+            Xác nhận
+          </button>
+          <button
+            type="button"
+            onClick={onDecline}
+            className="w-full rounded-full bg-gray-100 text-gray-700 text-xs font-semibold py-1.5 hover:bg-gray-200 transition"
+          >
+            Xóa
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FriendsPage() {
   const navigate = useNavigate();
+  const suggestionsRef = useRef(null);
+  const requestsRef = useRef(null);
   const handleFetchError = useCallback((err) => {
     toast.error(err?.message || "Không tải được dữ liệu bạn bè.");
   }, []);
@@ -21,6 +101,17 @@ export default function FriendsPage() {
     currentUserId,
   } = useFriends({ onError: handleFetchError });
 
+  const scrollLeft = (ref) => {
+    if (ref.current) ref.current.scrollBy({ left: -320, behavior: "smooth" });
+  };
+
+  const scrollRight = (ref) => {
+    if (ref.current) ref.current.scrollBy({ left: 320, behavior: "smooth" });
+  };
+
+  const displayedRequests = requests.slice(0, 10);
+  const displayedSuggestions = suggestions.slice(0, 10);
+
   const headerContent = (
     <div className="flex items-center justify-between w-full">
       <h2 className="text-sm md:text-base font-semibold text-gray-800">
@@ -32,60 +123,6 @@ export default function FriendsPage() {
       </span>
     </div>
   );
-
-  const renderRequestCard = (req) => {
-    const initial = req.otherUserName.charAt(0);
-    return (
-      <div
-        key={req.id}
-        className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col"
-      >
-        <div className="h-32 md:h-40 bg-[#FFE6DD] flex items-center justify-center text-3xl font-semibold text-[#F58A4A]">
-          {initial}
-        </div>
-        <div className="p-3 md:p-4 flex-1 flex flex-col gap-2">
-          <p className="text-sm md:text-base font-semibold text-gray-900">
-            {req.otherUserName}
-          </p>
-          <p className="text-[11px] md:text-xs text-gray-500">
-            Lời mời kết bạn tới bạn
-          </p>
-          <div className="mt-auto flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await friendApi.respondRequest(req.id, currentUserId, "accept");
-                  removeRequest(req.id);
-                  toast.success("Đã chấp nhận lời mời kết bạn.");
-                } catch (err) {
-                  toast.error(err?.message || "Không xác nhận được lời mời.");
-                }
-              }}
-              className="w-full rounded-full bg-[#F9C96D] text-gray-800 text-xs md:text-sm font-semibold py-1.5 hover:bg-[#F7B944] transition"
-            >
-              Xác nhận
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await friendApi.respondRequest(req.id, currentUserId, "decline");
-                  removeRequest(req.id);
-                  toast.success("Đã xoá lời mời.");
-                } catch (err) {
-                  toast.error(err?.message || "Không xoá được lời mời.");
-                }
-              }}
-              className="w-full rounded-full bg-gray-100 text-gray-800 text-xs md:text-sm font-semibold py-1.5 hover:bg-gray-200 transition"
-            >
-              Xóa
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <MainLayout headerContent={headerContent}>
@@ -186,13 +223,57 @@ export default function FriendsPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 overflow-y-auto pr-1">
-            {requests.map((req) => renderRequestCard(req))}
-            {requests.length === 0 && (
-              <p className="text-[11px] md:text-xs text-gray-500 col-span-2 md:col-span-3 lg:col-span-4">
-                Hiện tại bạn không có lời mời kết bạn nào cần xử lý.
-              </p>
-            )}
+          <div className="relative group/suggest">
+            <button
+              type="button"
+              onClick={() => scrollLeft(requestsRef)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 opacity-0 group-hover/suggest:opacity-100 transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div
+              ref={requestsRef}
+              className="flex gap-3 overflow-x-auto px-2 pb-1 scrollbar-hide"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {displayedRequests.map((req) => (
+                <RequestCard
+                  key={req.id}
+                  req={req}
+                  onAccept={async () => {
+                    try {
+                      await friendApi.respondRequest(req.id, currentUserId, "accept");
+                      removeRequest(req.id);
+                      toast.success("Đã chấp nhận lời mời kết bạn.");
+                    } catch (err) {
+                      toast.error(err?.message || "Không xác nhận được lời mời.");
+                    }
+                  }}
+                  onDecline={async () => {
+                    try {
+                      await friendApi.respondRequest(req.id, currentUserId, "decline");
+                      removeRequest(req.id);
+                      toast.success("Đã xoá lời mời.");
+                    } catch (err) {
+                      toast.error(err?.message || "Không xoá được lời mời.");
+                    }
+                  }}
+                  onProfile={() => navigate(`/profile/${req.otherUserId}`)}
+                />
+              ))}
+              {displayedRequests.length === 0 && (
+                <p className="text-[11px] md:text-xs text-gray-500 py-4 px-2">
+                  Hiện tại bạn không có lời mời kết bạn nào cần xử lý.
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => scrollRight(requestsRef)}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 opacity-0 group-hover/suggest:opacity-100 transition"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
           </div>
 
@@ -209,65 +290,52 @@ export default function FriendsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 overflow-y-auto pr-1">
-              {suggestions.map((sug) => {
-                const initial =
-                  sug.username?.charAt(0) ||
-                  sug.email?.charAt(0) ||
-                  "U";
-                return (
-                  <div
+            <div className="relative group/suggest2">
+              <button
+                type="button"
+                onClick={() => scrollLeft(suggestionsRef)}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 opacity-0 group-hover/suggest2:opacity-100 transition"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div
+                ref={suggestionsRef}
+                className="flex gap-3 overflow-x-auto px-2 pb-1 scrollbar-hide"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                {displayedSuggestions.map((sug) => (
+                  <SuggestionCard
                     key={sug.id}
-                    className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col"
-                  >
-                    <div className="h-28 md:h-32 bg-[#E7F3FF] flex items-center justify-center text-3xl font-semibold text-[#6CB8FF]">
-                      {initial}
-                    </div>
-                    <div className="p-3 md:p-4 flex-1 flex flex-col gap-2">
-                      <p className="text-sm md:text-base font-semibold text-gray-900">
-                        {sug.username || sug.email}
-                      </p>
-                      {sug.mutualCount > 0 && (
-                        <p className="text-[11px] md:text-xs text-gray-500">
-                          {sug.mutualCount} bạn chung
-                        </p>
-                      )}
-                      <div className="mt-auto flex flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              if (!currentUserId) {
-                                toast.error(
-                                  "Bạn cần đăng nhập để gửi lời mời kết bạn."
-                                );
-                                return;
-                              }
-                              await friendApi.sendRequest(sug.id, currentUserId);
-                              toast.success("Đã gửi lời mời kết bạn.");
-                              removeSuggestion(sug.id);
-                            } catch (err) {
-                              toast.error(
-                                err?.message ||
-                                  "Không gửi được lời mời kết bạn."
-                              );
-                            }
-                          }}
-                          className="w-full rounded-full bg-[#F9C96D] text-gray-800 text-xs md:text-sm font-semibold py-1.5 hover:bg-[#F7B944] transition"
-                        >
-                          Thêm bạn bè
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {suggestions.length === 0 && (
-                <p className="text-[11px] md:text-xs text-gray-500 col-span-2 md:col-span-3 lg:col-span-4">
-                  Tạm thời không có gợi ý nào. Hãy kết bạn thêm để có nhiều gợi ý hơn.
-                </p>
-              )}
+                    user={sug}
+                    onAdd={async () => {
+                      try {
+                        if (!currentUserId) {
+                          toast.error("Bạn cần đăng nhập để gửi lời mời kết bạn.");
+                          return;
+                        }
+                        await friendApi.sendRequest(sug.id, currentUserId);
+                        toast.success("Đã gửi lời mời kết bạn.");
+                        removeSuggestion(sug.id);
+                      } catch (err) {
+                        toast.error(err?.message || "Không gửi được lời mời kết bạn.");
+                      }
+                    }}
+                    onProfile={() => navigate(`/profile/${sug.id}`)}
+                  />
+                ))}
+                {displayedSuggestions.length === 0 && (
+                  <p className="text-[11px] md:text-xs text-gray-500 py-4 px-2">
+                    Tạm thời không có gợi ý nào. Hãy kết bạn thêm để có nhiều gợi ý hơn.
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => scrollRight(suggestionsRef)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 opacity-0 group-hover/suggest2:opacity-100 transition"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
           </div>

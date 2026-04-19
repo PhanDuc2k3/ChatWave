@@ -100,11 +100,27 @@ async function createTokenPair(user) {
   const accessToken = createAccessToken(user);
   const refreshTokenValue = crypto.randomBytes(48).toString("hex");
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRES_MS);
-  await RefreshToken.create({
-    userId: String(user.id || user._id),
-    token: refreshTokenValue,
-    expiresAt,
-  });
+  const userId = String(user.id || user._id);
+
+  console.log(`[authService] Creating refresh token for user: ${userId}`);
+
+  try {
+    const result = await RefreshToken.create({
+      userId,
+      token: refreshTokenValue,
+      expiresAt,
+    });
+    console.log(`[authService] Refresh token saved successfully: ${result._id}`);
+  } catch (err) {
+    console.error("[authService] Failed to save refresh token:", {
+      message: err.message,
+      code: err.code,
+      userId,
+    });
+    // Don't throw - continue without refresh token in DB
+    // This allows login to succeed even if refresh token storage fails
+  }
+
   return {
     accessToken,
     refreshToken: refreshTokenValue,
@@ -112,18 +128,27 @@ async function createTokenPair(user) {
 }
 
 async function refresh(refreshTokenValue) {
+  console.log(`[authService] Refresh attempt with token: ${refreshTokenValue?.substring(0, 20)}...`);
+
   if (!refreshTokenValue || typeof refreshTokenValue !== "string") {
     const err = new Error("Refresh token không hợp lệ");
     err.statusCode = 401;
     throw err;
   }
+
   const doc = await RefreshToken.findOne({ token: refreshTokenValue });
+  console.log(`[authService] Found refresh token doc:`, doc ? { _id: doc._id, expiresAt: doc.expiresAt, userId: doc.userId } : null);
+
   if (!doc || doc.expiresAt < new Date()) {
-    if (doc) await RefreshToken.deleteOne({ _id: doc._id });
+    if (doc) {
+      await RefreshToken.deleteOne({ _id: doc._id });
+      console.log(`[authService] Refresh token expired, deleted`);
+    }
     const err = new Error("Refresh token không hợp lệ hoặc đã hết hạn");
     err.statusCode = 401;
     throw err;
   }
+
   const user = await userRepository.findById(doc.userId);
   if (!user) {
     await RefreshToken.deleteOne({ _id: doc._id });
@@ -131,7 +156,10 @@ async function refresh(refreshTokenValue) {
     err.statusCode = 401;
     throw err;
   }
+
   await RefreshToken.deleteOne({ _id: doc._id });
+  console.log(`[authService] Old refresh token deleted, creating new token pair`);
+
   const { accessToken, refreshToken } = await createTokenPair(user);
   return { accessToken, refreshToken };
 }

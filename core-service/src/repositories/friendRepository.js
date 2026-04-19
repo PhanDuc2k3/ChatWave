@@ -86,6 +86,7 @@ async function getRequestsForUser(userId) {
       id: fr._id.toString(),
       otherUserId: otherId,
       otherUserName: user?.username || user?.email || "User",
+      avatar: user?.avatar || null,
       createdAt: fr.createdAt,
       direction: fr.requesterId === uid ? "outgoing" : "incoming",
     };
@@ -151,6 +152,7 @@ async function getSuggestions(userId, limit = 10) {
     id: u._id.toString(),
     username: u.username,
     email: u.email,
+    avatar: u.avatar || null,
     mutualCount: 0,
   }));
 }

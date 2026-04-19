@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ClipboardList } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { slides } from "./messageData";
@@ -15,6 +16,7 @@ import { friendApi } from "../../api/friendApi";
 import toast from "react-hot-toast";
 
 export default function MessagePage() {
+  const navigate = useNavigate();
   const [activeSlide, setActiveSlide] = useState(0);
   const [activeTab, setActiveTab] = useState("overview");
   const [sortOption, setSortOption] = useState("latest");
@@ -462,18 +464,42 @@ export default function MessagePage() {
                   + Chọn từ danh sách bạn bè
                 </button>
                 {friendSuggestions.length > 0 && (
-                  <div className="mt-2 max-h-32 overflow-y-auto space-y-1 border rounded-lg p-2">
+                  <div className="mt-2 max-h-48 overflow-y-auto space-y-1">
                     {friendSuggestions
                       .filter((f) => !invitedMembers.some((m) => m.id === f.id))
                       .map((f) => (
-                        <button
+                        <div
                           key={f.id}
-                          type="button"
-                          onClick={() => setInvitedMembers((prev) => [...prev, { id: f.id, username: f.username || f.email }])}
-                          className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-100"
+                          className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 group"
                         >
-                          + {f.username || f.email}
-                        </button>
+                          <div
+                            onClick={() => {
+                              setShowCreateGroup(false);
+                              navigate(`/profile/${f.id}`);
+                            }}
+                            className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FA8DAE] to-[#FFB3C6] flex items-center justify-center text-white text-xs font-semibold shrink-0">
+                              {(f.username || f.email || "U")[0].toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-800 truncate">
+                                {f.username || f.name || "User"}
+                              </p>
+                              <p className="text-xs text-gray-400 truncate">{f.email}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInvitedMembers((prev) => [...prev, { id: f.id, username: f.username || f.email }]);
+                            }}
+                            className="w-7 h-7 rounded-full bg-[#FA8DAE] text-white text-xs flex items-center justify-center hover:bg-[#e87a9c] transition shrink-0 ml-2 opacity-0 group-hover:opacity-100"
+                          >
+                            +
+                          </button>
+                        </div>
                       ))}
                   </div>
                 )}

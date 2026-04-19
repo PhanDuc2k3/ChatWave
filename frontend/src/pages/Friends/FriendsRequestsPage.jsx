@@ -198,20 +198,23 @@ export default function FriendsRequestsPage() {
 
           <div className="mt-2 max-h-80 overflow-y-auto space-y-1 pr-1">
             {filteredRequests.map((req) => {
-              const initial = req.otherUserName.charAt(0);
+              const initial = (req.otherUserName || "U")[0];
               const isActive = selectedRequest && selectedRequest.id === req.id;
               return (
-                <button
+                <div
                   key={req.id}
-                  type="button"
                   onClick={() => setSelectedRequestId(req.id)}
-                  className={`w-full flex items-center gap-3 rounded-xl px-2 py-2 text-left ${
+                  className={`w-full flex items-center gap-3 rounded-xl px-2 py-2 text-left cursor-pointer ${
                     isActive ? "bg-[#FFF7F0]" : "hover:bg-gray-50"
                   }`}
                 >
                   <div className="shrink-0">
-                    <div className="w-9 h-9 rounded-full bg-[#FFE6DD] flex items-center justify-center text-xs font-semibold text-[#F58A4A]">
-                      {initial}
+                    <div className="w-9 h-9 rounded-full bg-[#FFE6DD] flex items-center justify-center text-xs font-semibold text-[#F58A4A] overflow-hidden">
+                      {req.avatar ? (
+                        <img src={req.avatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span>{initial}</span>
+                      )}
                     </div>
                   </div>
                   <div className="flex-1">
@@ -242,7 +245,7 @@ export default function FriendsRequestsPage() {
                       Xóa
                     </button>
                   </div>
-                </button>
+                </div>
               );
             })}
 
@@ -262,8 +265,12 @@ export default function FriendsRequestsPage() {
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div className="flex items-center gap-3 md:gap-4">
                     <div className="shrink-0">
-                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#FFE6DD] flex items-center justify-center text-lg md:text-xl font-semibold text-[#F58A4A]">
-                        {selectedRequest.name.charAt(0)}
+                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#FFE6DD] flex items-center justify-center text-lg md:text-xl font-semibold text-[#F58A4A] overflow-hidden">
+                        {selectedRequest.avatar ? (
+                          <img src={selectedRequest.avatar} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{(selectedRequest.name || "U").charAt(0)}</span>
+                        )}
                       </div>
                     </div>
                     <div>
