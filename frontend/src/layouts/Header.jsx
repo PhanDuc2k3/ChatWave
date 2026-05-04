@@ -66,8 +66,14 @@ export default function Header() {
     "User";
   const initial = displayName.charAt(0).toUpperCase();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setDropdownOpen(false);
+    const refreshToken = localStorage.getItem("chatwave_refresh_token");
+    try {
+      await authApi.logout(refreshToken);
+    } catch (e) {
+      // Vẫn tiếp tục logout local dù API lỗi
+    }
     localStorage.removeItem("chatwave_token");
     localStorage.removeItem("chatwave_refresh_token");
     localStorage.removeItem("chatwave_user");

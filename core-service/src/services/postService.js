@@ -1,7 +1,7 @@
 const postRepository = require("../repositories/postRepository");
 
-async function getAllPosts() {
-  return postRepository.findAll();
+async function getAllPosts(page = 1, limit = 5) {
+  return postRepository.findAll(page, limit);
 }
 
 async function getPostsByGroup(groupId) {

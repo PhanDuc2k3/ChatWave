@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../context/ConfirmContext";
@@ -14,6 +14,10 @@ export default function HomePage() {
   const { confirm } = useConfirm();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const pageRef = useRef(1);
+  const scrollPositionRef = useRef(0);
   const [error, setError] = useState("");
   const [activePost, setActivePost] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,6 +35,7 @@ export default function HomePage() {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [groupsError, setGroupsError] = useState("");
   const [activeGroup, setActiveGroup] = useState(null);
+  const activeGroupInfo = myGroups.find(g => String(g.id || g._id) === String(activeGroup)) || null;
   const [groupPosts, setGroupPosts] = useState([]);
   const [loadingGroupPosts, setLoadingGroupPosts] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -58,11 +63,19 @@ export default function HomePage() {
   const currentUserName =
     storedUser?.username || storedUser?.email || storedUser?.name || "Bạn";
 
-  const withLikeState = (post) => {
-    const likedBy = post.likedBy || [];
-    const isLiked = currentUserId ? likedBy.includes(currentUserId) : false;
-    return { ...post, isLiked };
-  };
+  const currentUserIdRef = useRef(currentUserId);
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId;
+  }, [currentUserId]);
+
+  const withLikeState = useCallback(
+    (post) => {
+      const likedBy = post.likedBy || [];
+      const isLiked = currentUserIdRef.current ? likedBy.includes(currentUserIdRef.current) : false;
+      return { ...post, isLiked };
+    },
+    []
+  );
 
   const exploreList = useMemo(() => {
     if (exploreQuery.trim()) {
@@ -98,17 +111,28 @@ export default function HomePage() {
     const tagCount = new Map();
 
     source.forEach((p) => {
-      const text = String(p.text || "");
-      if (!text) return;
-      // Tìm tất cả hashtag dạng #tukhoa (không chứa khoảng trắng)
-      const matches = text.match(/#[^\s#]+/g);
-      if (!matches) return;
-      matches.forEach((raw) => {
-        const tag = raw.trim();
-        if (tag.length < 2 || tag.length > 40) return;
-        const key = tag.toLowerCase();
-        tagCount.set(key, (tagCount.get(key) || 0) + 1);
+      // 1. Từ field hashtags (ưu tiên)
+      const savedHashtags = Array.isArray(p.hashtags) ? p.hashtags : [];
+      savedHashtags.forEach((tag) => {
+        const key = String(tag).toLowerCase();
+        if (key.length >= 2 && key.length <= 40) {
+          tagCount.set(key, (tagCount.get(key) || 0) + 2); // Ưu tiên cao hơn
+        }
       });
+
+      // 2. Từ text (trích xuất thêm)
+      const text = String(p.text || "");
+      if (text) {
+        const matches = text.match(/#[^\s#]+/g);
+        if (matches) {
+          matches.forEach((raw) => {
+            const tag = raw.trim();
+            if (tag.length < 2 || tag.length > 40) return;
+            const key = tag.toLowerCase();
+            tagCount.set(key, (tagCount.get(key) || 0) + 1);
+          });
+        }
+      }
     });
 
     if (!tagCount.size) return [];
@@ -116,7 +140,17 @@ export default function HomePage() {
     return Array.from(tagCount.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
-      .map(([w]) => w); // đã là dạng #tag
+      .map(([w]) => w);
+  }, [posts]);
+
+  // Posts hiển thị ngẫu nhiên - shuffle mỗi khi posts thay đổi
+  const shuffledPosts = useMemo(() => {
+    const arr = [...(posts || [])];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
   }, [posts]);
 
   useEffect(() => {
@@ -125,9 +159,12 @@ export default function HomePage() {
     const fetchPosts = async () => {
       try {
         setLoading(true);
-        const data = await postApi.getAll();
+        const data = await postApi.getAll({ page: 1, limit: 5 });
         if (isMounted) {
-          setPosts((data || []).map(withLikeState));
+          const newPosts = data?.posts || data || [];
+          setPosts(newPosts.map(withLikeState));
+          setHasMore(data?.pagination?.hasMore ?? false);
+          pageRef.current = 1;
         }
       } catch (err) {
         if (isMounted) {
@@ -146,6 +183,46 @@ export default function HomePage() {
       isMounted = false;
     };
   }, []);
+
+  const loadMorePosts = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+
+    try {
+      setLoadingMore(true);
+      const nextPage = pageRef.current + 1;
+      const data = await postApi.getAll({ page: nextPage, limit: 5 });
+      const newPosts = data?.posts || [];
+      if (newPosts.length > 0) {
+        setPosts((prev) => [...prev, ...newPosts.map(withLikeState)]);
+        pageRef.current = nextPage;
+        setHasMore(data?.pagination?.hasMore ?? (newPosts.length === 5));
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Error loading more posts:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, withLikeState]);
+
+  // Infinite scroll - dùng Intersection Observer
+  useEffect(() => {
+    const sentinel = document.getElementById("scroll-sentinel");
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMorePosts();
+        }
+      },
+      { rootMargin: "100px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMorePosts]);
 
   // Nếu có ?postId= trên URL (từ trang Message), tự mở popup bài viết tương ứng
   useEffect(() => {
@@ -276,15 +353,13 @@ export default function HomePage() {
     }
   };
 
+  // Fetch groups data (cho sidebar)
   useEffect(() => {
-    if (activeSection !== "groups" || !currentUserId) return;
+    if (!currentUserId) return;
     let cancelled = false;
 
     const fetchGroups = async () => {
       try {
-        setLoadingGroups(true);
-        setLoadingGroupPosts(true);
-        setGroupsError("");
         const [mine, discover] = await Promise.all([
           groupApi.getMyGroups(currentUserId),
           groupApi.getDiscoverable(currentUserId),
@@ -292,65 +367,69 @@ export default function HomePage() {
         if (cancelled) return;
         const myList = mine || [];
         const discoverList = discover || [];
-        const myIds = new Set(
-          myList.map((g) => String(g.id || g._id))
-        );
-        // Chỉ giữ lại các nhóm chưa tham gia
+        const myIds = new Set(myList.map((g) => String(g.id || g._id)));
         const onlyNotJoined = discoverList.filter(
           (g) => !myIds.has(String(g.id || g._id))
         );
-        // Ngẫu nhiên một chút
-        const shuffled = [...onlyNotJoined].sort(
-          () => Math.random() - 0.5
-        );
-        // Giới hạn số lượng gợi ý (ví dụ 6)
+        const shuffled = [...onlyNotJoined].sort(() => Math.random() - 0.5);
         const limited = shuffled.slice(0, 6);
-
         setMyGroups(myList);
         setDiscoverGroups(limited);
-
-        // Lấy tất cả bài viết từ các nhóm đã tham gia
-        const postPromises = myList.map((g) => {
-          const groupId = g.id || g._id;
-          if (!groupId) return Promise.resolve([]);
-          return postApi
-            .getAll({ groupId, userId: currentUserId })
-            .catch(() => []);
-        });
-
-        const results = await Promise.all(postPromises);
-        if (cancelled) return;
-
-        const allPosts = results
-          .flat()
-          .filter(Boolean)
-          .map(withLikeState)
-          .sort((a, b) => {
-            const ta = new Date(a.createdAt || 0).getTime();
-            const tb = new Date(b.createdAt || 0).getTime();
-            return tb - ta;
-          });
-
-        setGroupPosts(allPosts);
       } catch (err) {
-        if (cancelled) return;
-        setGroupsError(
-          err?.message || "Không tải được danh sách nhóm."
-        );
-      } finally {
-        if (!cancelled) {
-          setLoadingGroups(false);
-          setLoadingGroupPosts(false);
-        }
+        console.error("Error fetching groups:", err);
       }
     };
 
     fetchGroups();
-
     return () => {
       cancelled = true;
     };
-  }, [activeSection, currentUserId]);
+  }, [currentUserId]);
+
+  // Fetch posts cho groups section
+  useEffect(() => {
+    if (activeSection !== "groups" || !currentUserId) return;
+    let cancelled = false;
+
+    const fetchGroupPosts = async () => {
+      try {
+        setLoadingGroupPosts(true);
+        setGroupsError("");
+        
+        // Nếu có activeGroup được chọn, chỉ fetch bài viết của nhóm đó
+        if (activeGroup) {
+          const data = await postApi.getAll({ groupId: activeGroup, userId: currentUserId }).catch(() => []);
+          if (cancelled) return;
+          const posts = Array.isArray(data) ? data : (data?.posts || []);
+          setGroupPosts(posts.map(withLikeState));
+        } else {
+          // Nếu không có activeGroup, fetch tất cả bài viết từ các nhóm của user
+          const mine = await groupApi.getMyGroups(currentUserId);
+          if (cancelled) return;
+          const myList = mine || [];
+          const postPromises = myList.map((g) => {
+            const groupId = g.id || g._id;
+            if (!groupId) return Promise.resolve([]);
+            return postApi.getAll({ groupId, userId: currentUserId }).catch(() => []);
+          });
+          const results = await Promise.all(postPromises);
+          if (cancelled) return;
+          const allPosts = results.flat().map(r => Array.isArray(r) ? r : (r?.posts || [])).flat().filter(Boolean);
+          setGroupPosts(allPosts.map(withLikeState));
+        }
+      } catch (err) {
+        console.error("Error fetching group posts:", err);
+        setGroupsError("Không thể tải bài viết nhóm");
+      } finally {
+        if (!cancelled) setLoadingGroupPosts(false);
+      }
+    };
+
+    fetchGroupPosts();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection, currentUserId, activeGroup, withLikeState]);
 
   const handleSelectGroup = async () => {
     // Đã dùng trang /groups/:id để xem chi tiết, nên hàm này không còn cần cho Home
@@ -695,44 +774,47 @@ export default function HomePage() {
             </nav>
 
             <div>
-              <p className="text-sm md:text-base font-semibold text-gray-700 tracking-wide mb-3">
+              <p className="text-sm md:text-base font-semibold text-gray-700 tracking-wide mb-2">
                 NHÓM CỦA TÔI
               </p>
-              <div className="space-y-2 text-sm md:text-base">
+              <div className="space-y-1 text-sm md:text-base">
                 {myGroups.length === 0 ? (
                   <button
                     type="button"
-                    onClick={() => navigate("/groups")}
+                    onClick={() => setActiveSection("groups")}
                     className="w-full text-left text-xs md:text-sm text-gray-500 hover:text-[#EA580C]"
                   >
-                    Bạn chưa tham gia nhóm nào. Bấm để khám phá nhóm.
+                    Bạn chưa tham gia nhóm nào.
                   </button>
                 ) : (
-                  myGroups.slice(0, 5).map((g) => {
-                    const name = g.name || "Nhóm không tên";
-                    const initial = name.charAt(0).toUpperCase();
-                    const count =
-                      g.membersCount || g.members?.length || 0;
-                    const id = g.id || g._id;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => navigate(`/groups/${id}`)}
-                        className="w-full flex items-center gap-3 px-1 py-1.5 rounded-xl hover:bg-white text-left"
-                      >
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#DBEAFE] text-xs md:text-sm font-semibold text-[#2563EB]">
-                          {initial}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-gray-800 truncate">{name}</p>
-                          <p className="text-[11px] text-gray-400">
-                            {count.toLocaleString("vi-VN")} thành viên
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })
+                  <ul className="space-y-0.5 max-h-48 overflow-y-auto pr-1">
+                    {myGroups.slice(0, 8).map((g) => {
+                      const name = g.name || "Nhóm không tên";
+                      const initial = name.charAt(0).toUpperCase();
+                      const id = g.id || g._id;
+                      return (
+                        <li key={id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveSection("groups");
+                              setActiveGroup(id);
+                            }}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition ${
+                              activeGroup === id
+                                ? "bg-[#DBEAFE] text-[#2563EB]"
+                                : "hover:bg-white text-gray-700"
+                            }`}
+                          >
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#DBEAFE] text-[11px] font-semibold text-[#2563EB] shrink-0">
+                              {initial}
+                            </span>
+                            <span className="truncate text-xs md:text-sm">{name}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
             </div>
@@ -842,140 +924,121 @@ export default function HomePage() {
               )}
 
               {activeSection === "groups" && (
-                <div className="w-full rounded-2xl bg-white shadow-sm border border-[#E2E8F0] px-4 py-4 md:px-5 md:py-4 mb-1">
-                  <h2 className="text-sm md:text-base font-semibold text-gray-900 mb-1">
-                    Nhóm trên ChatWave
-                  </h2>
-                  <p className="text-xs md:text-sm text-gray-500 mb-3">
-                    Kết nối cùng những người có chung sở thích và xem bài viết trong các nhóm bạn tham gia.
-                  </p>
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                    <p className="text-xs md:text-sm text-gray-500">
-                      Bạn có thể tham gia nhóm sẵn có hoặc tự tạo một không gian riêng cho team của mình.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateGroup(true)}
-                      className="px-3 py-1.5 rounded-full bg-[#FA8DAE] text-white text-xs md:text-sm font-semibold hover:opacity-90 transition"
-                    >
-                      + Tạo nhóm mới
-                    </button>
-                  </div>
-                  {groupsError && (
-                    <p className="text-xs text-red-500 mb-2">
-                      {groupsError}
-                    </p>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs md:text-sm">
-                    <div className="border border-gray-100 rounded-xl p-3 flex flex-col gap-1">
-                      <p className="font-semibold text-gray-900 mb-1">
-                        Nhóm của bạn
-                      </p>
-                      {loadingGroups ? (
-                        <p className="text-gray-500 text-xs">
-                          Đang tải danh sách nhóm...
+                <div className="w-full flex flex-col gap-4 pb-6">
+                  {activeGroupInfo ? (
+                    <>
+                      <div className="w-full rounded-2xl bg-white shadow-sm border border-[#E2E8F0] px-4 py-4 md:px-5 md:py-4">
+                        <h2 className="text-sm md:text-base font-semibold text-gray-900 mb-1">
+                          Nhóm trên ChatWave
+                        </h2>
+                        <p className="text-xs md:text-sm text-gray-500 mb-3">
+                          Kết nối cùng những người có chung sở thích và xem bài viết trong các nhóm bạn tham gia.
                         </p>
-                      ) : myGroups.length === 0 ? (
-                        <p className="text-gray-500 text-xs">
-                          Bạn chưa tham gia nhóm nào.
-                        </p>
-                      ) : (
-                        <ul className="space-y-1 max-h-40 overflow-auto pr-1">
-                          {myGroups.map((g) => {
-                            const id = g.id || g._id;
-                            return (
-                              <li key={id}>
-                                <button
-                                  type="button"
-                                  onClick={() => navigate(`/groups/${id}`)}
-                                  className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-gray-50 text-gray-700"
-                                >
-                                  <span className="truncate">
-                                    {g.name}
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 shrink-0">
-                                    {(g.membersCount || g.members?.length || 0).toLocaleString("vi-VN")} thành viên
-                                  </span>
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                    <div className="border border-gray-100 rounded-xl p-3 flex flex-col gap-1">
-                      <p className="font-semibold text-gray-900 mb-1">
-                        Gợi ý tham gia
-                      </p>
-                      {loadingGroups ? (
-                        <p className="text-gray-500 text-xs">
-                          Đang tải nhóm gợi ý...
-                        </p>
-                      ) : discoverGroups.length === 0 ? (
-                        <p className="text-gray-500 text-xs">
-                          Hiện chưa có nhóm gợi ý.
-                        </p>
-                      ) : (
-                        <ul className="space-y-1 max-h-40 overflow-auto pr-1">
-                          {discoverGroups.map((g) => {
-                            const id = g.id || g._id;
-                            return (
-                              <li key={id}>
-                                <button
-                                  type="button"
-                                  onClick={() => navigate(`/groups/${id}`)}
-                                  className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-gray-50 text-gray-700"
-                                >
-                                  <span className="truncate">
-                                    {g.name}
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 shrink-0">
-                                    {(g.membersCount || g.members?.length || 0).toLocaleString("vi-VN")} thành viên
-                                  </span>
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                  {activeGroup && (
-                    <div className="mt-3 w-full rounded-2xl border border-dashed border-[#E2E8F0] bg-[#F8FAFC] px-3 py-3 md:px-4 md:py-3 flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-sm md:text-base font-semibold text-gray-900">
-                            {activeGroup.name}
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                          <p className="text-xs md:text-sm text-gray-500">
+                            Bạn có thể tham gia nhóm sẵn có hoặc tự tạo một không gian riêng cho team của mình.
                           </p>
-                          {activeGroup.description && (
-                            <p className="text-xs md:text-sm text-gray-600 line-clamp-2">
-                              {activeGroup.description}
+                          <button
+                            type="button"
+                            onClick={() => setShowCreateGroup(true)}
+                            className="px-3 py-1.5 rounded-full bg-[#FA8DAE] text-white text-xs md:text-sm font-semibold hover:opacity-90 transition"
+                          >
+                            + Tạo nhóm mới
+                          </button>
+                        </div>
+                        {groupsError && (
+                          <p className="text-xs text-red-500 mb-2">
+                            {groupsError}
+                          </p>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs md:text-sm">
+                          <div className="border border-gray-100 rounded-xl p-3 col-span-1 md:col-span-2">
+                            <p className="font-semibold text-gray-900 mb-2">
+                              Gợi ý tham gia
                             </p>
+                            {loadingGroups ? (
+                              <p className="text-gray-500 text-xs">
+                                Đang tải nhóm gợi ý...
+                              </p>
+                            ) : discoverGroups.length === 0 ? (
+                              <p className="text-gray-500 text-xs">
+                                Hiện chưa có nhóm gợi ý.
+                              </p>
+                            ) : (
+                              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                {discoverGroups.map((g) => {
+                                  const id = g.id || g._id;
+                                  const name = g.name || "Nhóm không tên";
+                                  const initial = name.charAt(0).toUpperCase();
+                                  const count = g.membersCount || g.members?.length || 0;
+                                  return (
+                                    <div
+                                      key={id}
+                                      className="flex-shrink-0 w-36 bg-gradient-to-br from-[#FFF7F0] to-[#FFEDD5] rounded-xl p-3 flex flex-col items-center text-center cursor-pointer hover:scale-105 transition-transform"
+                                      onClick={() => navigate(`/groups/${id}`)}
+                                    >
+                                      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm text-lg font-bold text-[#EA580C] mb-2">
+                                        {initial}
+                                      </span>
+                                      <p className="text-sm font-semibold text-gray-900 truncate w-full">
+                                        {name}
+                                      </p>
+                                      <p className="text-[10px] text-gray-500 mt-1">
+                                        {count.toLocaleString("vi-VN")} thành viên
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="w-full rounded-2xl border border-dashed border-[#E2E8F0] bg-[#F8FAFC] px-3 py-3 md:px-4 md:py-3 flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm md:text-base font-semibold text-gray-900">
+                              {activeGroupInfo.name}
+                            </p>
+                            {activeGroupInfo.description && (
+                              <p className="text-xs md:text-sm text-gray-600 line-clamp-2">
+                                {activeGroupInfo.description}
+                              </p>
+                            )}
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[11px] md:text-xs font-medium border border-[#E5E7EB] text-gray-600 bg-white">
+                            {activeGroupInfo.visibility === "private"
+                              ? "Nhóm riêng tư"
+                              : "Nhóm công khai"}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] md:text-xs text-gray-500">
+                          <span>
+                            {(activeGroupInfo.membersCount ||
+                              activeGroupInfo.members?.length ||
+                              0
+                            ).toLocaleString("vi-VN")}{" "}
+                            thành viên
+                          </span>
+                          {activeGroupInfo.createdAt && (
+                            <span>
+                              Tạo ngày{" "}
+                              {new Date(activeGroupInfo.createdAt).toLocaleDateString(
+                                "vi-VN"
+                              )}
+                            </span>
                           )}
                         </div>
-                        <span className="px-2 py-0.5 rounded-full text-[11px] md:text-xs font-medium border border-[#E5E7EB] text-gray-600 bg-white">
-                          {activeGroup.visibility === "private"
-                            ? "Nhóm riêng tư"
-                            : "Nhóm công khai"}
-                        </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] md:text-xs text-gray-500">
-                        <span>
-                          {(activeGroup.membersCount ||
-                            activeGroup.members?.length ||
-                            0
-                          ).toLocaleString("vi-VN")}{" "}
-                          thành viên
-                        </span>
-                        {activeGroup.createdAt && (
-                          <span>
-                            Tạo ngày{" "}
-                            {new Date(activeGroup.createdAt).toLocaleDateString(
-                              "vi-VN"
-                            )}
-                          </span>
-                        )}
-                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full rounded-2xl bg-white shadow-sm border border-[#E2E8F0] px-4 py-6 text-center">
+                      <p className="text-sm md:text-base font-medium text-gray-700 mb-2">
+                        Chưa chọn nhóm
+                      </p>
+                      <p className="text-xs md:text-sm text-gray-500">
+                        Hãy chọn một nhóm từ danh sách bên trái để xem bài viết.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1003,7 +1066,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 (activeSection === "feed"
-                  ? posts
+                  ? shuffledPosts
                   : activeSection === "explore"
                   ? exploreList
                   : activeSection === "saved"
@@ -1035,7 +1098,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 (activeSection === "feed"
-                  ? posts
+                  ? shuffledPosts
                   : activeSection === "explore"
                   ? exploreList
                   : activeSection === "saved"
@@ -1043,9 +1106,9 @@ export default function HomePage() {
                   : activeSection === "groups"
                   ? groupPosts
                   : []
-                ).map((post) => (
+                ).map((post, index) => (
                   <HomePostCard
-                    key={post.id || post._id}
+                    key={post.id ?? post._id ?? `post-${index}`}
                     post={post}
                     onToggleLike={handleToggleLike}
                     onAddComment={handleAddComment}
@@ -1058,6 +1121,26 @@ export default function HomePage() {
                     isSaved={savedIdSet.has(String(post.id || post._id))}
                   />
                 ))
+              )}
+
+              {/* Sentinel for infinite scroll */}
+              {activeSection === "feed" && (
+                <div id="scroll-sentinel" className="h-4" />
+              )}
+
+              {/* Load more indicator */}
+              {loadingMore && (
+                <div className="w-full rounded-2xl bg-white shadow-sm px-4 py-4 flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-[#4F8EF7] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm text-gray-500">Đang tải thêm bài viết...</span>
+                </div>
+              )}
+
+              {/* No more posts */}
+              {!hasMore && posts.length > 0 && activeSection === "feed" && (
+                <div className="w-full rounded-2xl bg-white shadow-sm px-4 py-4 text-center">
+                  <p className="text-sm text-gray-500">Bạn đã xem hết bài viết</p>
+                </div>
               )}
             </div>
           </div>
@@ -1116,55 +1199,6 @@ export default function HomePage() {
                 )}
               </div>
 
-            </div>
-
-            <div className="rounded-2xl bg-white shadow-sm border border-[#E2E8F0] px-4 py-4 space-y-3">
-              <p className="text-base font-semibold text-gray-900">
-                Nhóm gợi ý cho bạn
-              </p>
-              <div className="space-y-3 text-sm">
-                {loadingGroups ? (
-                  <p className="text-xs text-gray-500">
-                    Đang tải nhóm gợi ý...
-                  </p>
-                ) : discoverGroups.length === 0 ? (
-                  <p className="text-xs text-gray-500">
-                    Hiện chưa có nhóm gợi ý. Hãy tham gia vài nhóm trước đã nhé.
-                  </p>
-                ) : (
-                  discoverGroups.slice(0, 3).map((g) => {
-                    const id = g.id || g._id;
-                    const name = g.name || "Nhóm không tên";
-                    const members =
-                      g.membersCount || g.members?.length || 0;
-                    return (
-                      <div
-                        key={id}
-                        className="flex items-center justify-between gap-3"
-                      >
-                        <div
-                          className="cursor-pointer"
-                          onClick={() => navigate(`/groups/${id}`)}
-                        >
-                          <p className="font-semibold text-gray-900">
-                            {name}
-                          </p>
-                          <p className="text-gray-400 text-xs md:text-sm">
-                            {members.toLocaleString("vi-VN")} thành viên
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/groups/${id}`)}
-                          className="px-3 py-1 rounded-full border border-[#FB923C] text-[11px] font-medium text-[#EA580C] hover:bg-orange-50"
-                        >
-                          Xem nhóm
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
             </div>
           </aside>
         </div>

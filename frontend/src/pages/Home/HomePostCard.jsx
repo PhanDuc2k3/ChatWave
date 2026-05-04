@@ -370,6 +370,20 @@ export default function HomePostCard({
           </>
         )}
 
+        {/* Hashtags */}
+        {post.hashtags && post.hashtags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {post.hashtags.map((tag, idx) => (
+              <span
+                key={idx}
+                className="text-xs font-medium text-[#FA8DAE] hover:underline cursor-pointer"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
         {post.imageUrl && (
           <div className="overflow-hidden rounded-2xl border border-gray-100">
             <img

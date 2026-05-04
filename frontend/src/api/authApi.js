@@ -1,5 +1,5 @@
 import axios from "axios";
-import axiosClient from "./axiosClient";
+import axiosClient, { logout } from "./axiosClient";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api/v1";
 
@@ -10,6 +10,10 @@ export const authApi = {
 
   refresh(refreshToken) {
     return axios.post(`${baseURL}/auth/refresh`, { refreshToken }).then((r) => r.data);
+  },
+
+  logout(refreshToken) {
+    return axiosClient.post("/auth/logout", { refreshToken });
   },
 
   register(payload) {
@@ -32,4 +36,7 @@ export const authApi = {
     return axiosClient.post("/auth/reset-password", { token, newPassword });
   },
 };
+
+// Re-export logout và isAuthenticated từ axiosClient
+export { logout, isAuthenticated } from "./axiosClient";
 

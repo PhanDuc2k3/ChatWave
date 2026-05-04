@@ -11,6 +11,10 @@ router.post("/login", authController.login);
 
 // POST /api/v1/auth/refresh
 router.post("/refresh", authController.refresh);
+
+// POST /api/v1/auth/logout
+router.post("/logout", authController.logout);
+
 router.post("/change-password", authController.changePassword);
 router.post("/forgot-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);

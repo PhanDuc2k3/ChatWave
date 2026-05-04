@@ -6,21 +6,73 @@ async function search(query) {
   const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(escaped, "i");
   const posts = await Post.find({
-    $or: [{ text: regex }, { authorName: regex }],
-    groupId: null,
+    $and: [
+      {
+        $or: [
+          { text: regex },
+          { authorName: regex },
+          { hashtags: regex },
+        ],
+      },
+      {
+        $or: [
+          { groupId: null },
+          { groupId: { $exists: false } },
+        ],
+      },
+    ],
   })
     .sort({ createdAt: -1 })
     .limit(20);
   return posts.map((p) => p.toObject());
 }
 
-async function findAll() {
+async function findAll(page = 1, limit = 5) {
   const now = new Date();
-  const posts = await Post.find({
-    groupId: null,
-    $or: [{ scheduledAt: null }, { scheduledAt: { $lte: now } }],
-  }).sort({ createdAt: -1 });
-  return posts.map((p) => p.toObject());
+  const skip = (page - 1) * limit;
+  
+  const [posts, total] = await Promise.all([
+    Post.find({
+      $and: [
+        {
+          $or: [
+            { groupId: null },
+            { groupId: { $exists: false } },
+          ],
+        },
+        {
+          $or: [{ scheduledAt: null }, { scheduledAt: { $lte: now } }],
+        },
+      ],
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Post.countDocuments({
+      $and: [
+        {
+          $or: [
+            { groupId: null },
+            { groupId: { $exists: false } },
+          ],
+        },
+        {
+          $or: [{ scheduledAt: null }, { scheduledAt: { $lte: now } }],
+        },
+      ],
+    }),
+  ]);
+  
+  return {
+    posts: posts.map((p) => p.toObject()),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasMore: skip + posts.length < total,
+    },
+  };
 }
 
 async function findByGroup(groupId) {

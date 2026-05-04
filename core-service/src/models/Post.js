@@ -35,6 +35,7 @@ const postSchema = new mongoose.Schema(
     shares: { type: Number, default: 0 },
     likedBy: { type: [String], default: [] }, // user ids đã like
     commentList: { type: [commentSchema], default: [] },
+    hashtags: { type: [String], default: [] }, // ví dụ: ["#react", "#javascript"]
     groupId: { type: mongoose.Schema.Types.ObjectId, ref: "Group", default: null },
   },
   {

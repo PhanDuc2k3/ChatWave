@@ -242,12 +242,19 @@ async function resetPassword(token, newPassword) {
   return { message: "Đặt lại mật khẩu thành công" };
 }
 
+async function revokeRefreshToken(token) {
+  if (!token) return;
+  await RefreshToken.deleteOne({ token });
+}
+
 module.exports = {
   register,
   login,
   refresh,
+  logout: revokeRefreshToken,
   changePassword,
   forgotPassword,
   resetPassword,
+  revokeRefreshToken,
 };
 

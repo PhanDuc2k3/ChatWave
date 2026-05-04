@@ -59,10 +59,23 @@ async function resetPassword(req, res, next) {
   }
 }
 
+async function logout(req, res, next) {
+  try {
+    const { refreshToken } = req.body || {};
+    if (refreshToken) {
+      await authService.revokeRefreshToken(refreshToken);
+    }
+    res.json({ message: "Đăng xuất thành công" });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   login,
   register,
   refresh,
+  logout,
   changePassword,
   forgotPassword,
   resetPassword,

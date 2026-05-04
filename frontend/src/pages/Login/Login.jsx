@@ -13,6 +13,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,12 +34,15 @@ export default function Login() {
 
       const accessToken = data?.accessToken || data?.token;
       const refreshToken = data?.refreshToken;
+
       if (accessToken) {
+        // Lưu tokens
         localStorage.setItem("chatwave_token", accessToken);
         if (refreshToken) {
           localStorage.setItem("chatwave_refresh_token", refreshToken);
         }
 
+        // Lấy profile user
         const profile =
           data.user?.id || data.user?._id
             ? await userApi.getById(data.user.id || data.user._id)
@@ -99,13 +103,19 @@ export default function Login() {
                 </div>
                 <div className="relative mb-2">
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Mật khẩu"
-                    className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none"
+                    className="w-full h-[55px] rounded-full px-10 border-2 border-gray-400 focus:border-[#F5C46A] outline-none pr-12"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
-                  <i className="fas fa-eye absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <i className={`fas fa-eye${showPassword ? "-slash" : ""}`} />
+                  </button>
                 </div>
                 <div className="mb-4 text-right">
                   <Link to="/forgot-password" className="text-sm text-[#FA8DAE] hover:underline">

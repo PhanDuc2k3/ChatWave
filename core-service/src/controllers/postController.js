@@ -3,7 +3,8 @@ const groupService = require("../services/groupService");
 
 async function getAllPosts(req, res, next) {
   try {
-    const { groupId, userId } = req.query;
+    const { groupId, userId, page = 1, limit = 5 } = req.query;
+    
     if (groupId) {
       const isMember = await groupService.isMember(groupId, userId);
       if (!isMember) {
@@ -12,10 +13,11 @@ async function getAllPosts(req, res, next) {
         });
       }
       const posts = await postService.getPostsByGroup(groupId);
-      return res.json(posts);
+      return res.json({ posts, pagination: { hasMore: false } });
     }
-    const posts = await postService.getAllPosts();
-    res.json(posts);
+    
+    const result = await postService.getAllPosts(Number(page), Number(limit));
+    res.json(result);
   } catch (err) {
     next(err);
   }
