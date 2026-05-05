@@ -23,6 +23,17 @@ async function uploadImage(req, res, next) {
       return res.status(400).json({ message: "Chưa chọn file ảnh" });
     }
 
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      console.error("Cloudinary credentials missing:", { cloudName, apiKey, hasSecret: !!apiSecret });
+      return res.status(500).json({ 
+        message: "Cloudinary chưa được cấu hình. Vui lòng liên hệ admin." 
+      });
+    }
+
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -31,6 +42,7 @@ async function uploadImage(req, res, next) {
         },
         (err, result) => {
           if (err) {
+            console.error("Cloudinary upload error:", err);
             reject(err);
             return;
           }
@@ -50,9 +62,11 @@ async function uploadImage(req, res, next) {
       .catch((err) => {
         res.status(500).json({
           message: err.message || "Tải ảnh lên thất bại",
+          error: process.env.NODE_ENV === "development" ? err.toString() : undefined
         });
       });
   } catch (err) {
+    console.error("Upload image error:", err);
     next(err);
   }
 }

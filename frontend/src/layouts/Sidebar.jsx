@@ -2,7 +2,7 @@ import React from "react";
 import {
   Home as HomeIcon,
   MessageCircle,
-  Users,
+  UserCircle,
   ClipboardList,
   Bot,
   Settings,
@@ -50,7 +50,7 @@ export default function Sidebar({ activeNav, setActiveNav }) {
                 : "border border-white/70 text-white hover:bg-white/20"
             }`}
           >
-            <Users className="w-5 h-5" />
+            <UserCircle className="w-5 h-5" />
           </button>
 
           {/* Task - Giao việc */}

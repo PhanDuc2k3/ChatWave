@@ -15,6 +15,11 @@ const { requireAuth } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
+// Health check endpoint (public, no auth required)
+router.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 router.use("/auth", authRoutes);
 router.use("/users", requireAuth, userRoutes);
 // Bài viết: cho phép khách xem, nhưng bắt buộc đăng nhập cho các thao tác ghi (được cấu hình trong postRoutes)

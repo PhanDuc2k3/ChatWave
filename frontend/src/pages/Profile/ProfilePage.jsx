@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { User, MapPin, Briefcase, GraduationCap, Calendar, MessageCircle, UserPlus, UserX, Pencil, Ban, ImagePlus, X } from "lucide-react";
+import { User, MapPin, Briefcase, GraduationCap, Calendar, MessageCircle, UserPlus, UserX, Pencil, Ban, ImagePlus, X, Image } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import HomePostCard from "../Home/HomePostCard";
 import { mockProfile } from "./profileData";
@@ -172,231 +172,326 @@ export default function ProfilePage() {
 
   return (
     <MainLayout headerContent={headerContent}>
-      <div className="w-full max-w-4xl mx-auto py-4 md:py-6 space-y-5 md:space-y-6 px-3 md:px-2 pb-16 md:pb-8">
+      <div className="w-full bg-[#F0F2F5] min-h-screen">
         {loading && (
-          <p className="text-center text-sm text-gray-500">
-            Đang tải hồ sơ...
-          </p>
+          <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-2 border-[#FA8DAE] border-t-transparent rounded-full animate-spin" />
+          </div>
         )}
-        {/* Cover + Avatar */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="h-24 sm:h-32 md:h-40 bg-linear-to-r from-[#F5C46A] to-[#FA8DAE]" />
-          <div className="px-4 pb-4 -mt-10 sm:-mt-12 relative">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#FFF7F0] border-4 border-white shadow-md flex items-center justify-center overflow-hidden">
-              {profile.avatar ? (
-                <img src={profile.avatar} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-3xl font-bold text-[#FA8DAE]">{initial}</span>
-              )}
-            </div>
-            {isMe && (
-              <button
-                type="button"
-                onClick={() => { setShowEditProfile(true); setEditBio(profile.bio || ""); setAvatarFile(null); setAvatarPreview(null); setClearAvatar(false); }}
-                className="absolute top-2 right-4 w-9 h-9 rounded-full bg-white/90 border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-[#FA8DAE]/20 hover:text-[#FA8DAE] transition"
-                title="Chỉnh sửa hồ sơ"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-            )}
-            <h1 className="mt-3 text-lg md:text-2xl font-bold text-gray-900">
-              {name}
-            </h1>
-            <p className="text-sm text-gray-500">@{username}</p>
-            {bio && (
-              <p className="mt-2 text-sm text-gray-700">{bio}</p>
-            )}
 
-            {!isMe && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => navigate("/message")}
-                  className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full bg-[#F9C96D] text-gray-800 text-xs md:text-sm font-semibold hover:bg-[#F7B944] transition"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Nhắn tin
-                </button>
-                {isFriend ? (
+        {/* Cover Image */}
+        <div
+          className="h-48 md:h-56 lg:h-64 bg-linear-to-r from-[#FF9A44] to-[#FA8DAE] relative"
+          style={profile.coverImage ? { backgroundImage: `url(${profile.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+        >
+          <div className="absolute inset-0 bg-black/10" />
+          {isMe && (
+            <button
+              type="button"
+              onClick={() => { setShowEditProfile(true); setEditBio(profile.bio || ""); setAvatarFile(null); setAvatarPreview(null); setClearAvatar(false); }}
+              className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/60 text-white text-sm flex items-center gap-2 hover:bg-black/70 transition"
+            >
+              <ImagePlus className="w-4 h-4" />
+              Chỉnh sửa ảnh bìa
+            </button>
+          )}
+        </div>
+
+        {/* Profile Info Section */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="flex flex-col md:flex-row md:items-end gap-4 -mt-16 md:-mt-20 pb-4">
+              {/* Avatar */}
+              <div className="relative">
+                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center overflow-hidden">
+                  {profile.avatar ? (
+                    <img src={profile.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-5xl md:text-6xl font-bold text-[#FA8DAE]">{initial}</span>
+                  )}
+                </div>
+                {isMe && (
                   <button
                     type="button"
-                    onClick={async () => {
-                      try {
-                        if (!currentUserId || !profileUserId) return;
-                        await friendApi.removeFriend(
-                          currentUserId,
-                          profileUserId
-                        );
-                        setIsFriend(false);
-                        toast.success("Đã huỷ kết bạn.");
-                      } catch (err) {
-                        toast.error(
-                          err?.message || "Không huỷ kết bạn được."
-                        );
-                      }
-                    }}
-                    className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full bg-gray-100 text-gray-800 text-xs md:text-sm font-semibold hover:bg-gray-200 transition"
+                    onClick={() => { setShowEditProfile(true); setEditBio(profile.bio || ""); setAvatarFile(null); setAvatarPreview(null); setClearAvatar(false); }}
+                    className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-gray-600 hover:bg-gray-200 transition shadow"
                   >
-                    <UserX className="w-4 h-4" />
-                    Huỷ kết bạn
+                    <ImagePlus className="w-5 h-5" />
                   </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          if (!currentUserId || !profileUserId) {
-                            toast.error("Bạn cần đăng nhập để gửi lời mời kết bạn.");
-                            return;
-                          }
-                          await friendApi.sendRequest(profileUserId, currentUserId);
-                          toast.success("Đã gửi lời mời kết bạn.");
-                        } catch (err) {
-                          toast.error(err?.message || "Không gửi được lời mời kết bạn.");
-                        }
-                      }}
-                      className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full bg-[#FA8DAE] text-white text-xs md:text-sm font-semibold hover:opacity-90 transition"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      Kết bạn
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!(await confirm("Chặn người dùng này?"))) return;
-                        try {
-                          await friendApi.block(currentUserId, profileUserId);
-                          toast.success("Đã chặn người dùng.");
-                          navigate(-1);
-                        } catch (err) {
-                          toast.error(err?.message || "Không chặn được.");
-                        }
-                      }}
-                      className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full bg-gray-100 text-red-600 text-xs md:text-sm font-semibold hover:bg-red-50 transition"
-                    >
-                      <Ban className="w-4 h-4" />
-                      Chặn
-                    </button>
-                  </>
                 )}
               </div>
+
+              {/* Profile Info */}
+              <div className="flex-1 pb-2">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{name}</h1>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500 mt-1">
+                      <span>@{username}</span>
+                      <span>•</span>
+                      <span>{personalPosts.length} bài viết</span>
+                      <span>•</span>
+                      <span>{stats.friends} bạn bè</span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    {isMe ? (
+                      <button
+                        type="button"
+                        onClick={() => { setShowEditProfile(true); setEditBio(profile.bio || ""); setAvatarFile(null); setAvatarPreview(null); setClearAvatar(false); }}
+                        className="px-5 py-2 rounded-lg font-semibold transition flex items-center gap-2 bg-[#F9C96D] text-gray-800 hover:bg-[#F7B944]"
+                      >
+                        <Pencil className="w-5 h-5" />
+                        Chỉnh sửa
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => navigate("/message")}
+                          className="px-4 py-2 rounded-lg bg-[#F9C96D] text-gray-800 font-semibold flex items-center gap-2 hover:bg-[#F7B944] transition"
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                          Nhắn tin
+                        </button>
+                        {isFriend ? (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                if (!currentUserId || !profileUserId) return;
+                                await friendApi.removeFriend(currentUserId, profileUserId);
+                                setIsFriend(false);
+                                toast.success("Đã huỷ kết bạn.");
+                              } catch (err) {
+                                toast.error(err?.message || "Không huỷ kết bạn được.");
+                              }
+                            }}
+                            className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition"
+                          >
+                            <UserX className="w-5 h-5" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                if (!currentUserId || !profileUserId) {
+                                  toast.error("Bạn cần đăng nhập để gửi lời mời kết bạn.");
+                                  return;
+                                }
+                                await friendApi.sendRequest(profileUserId, currentUserId);
+                                toast.success("Đã gửi lời mời kết bạn.");
+                              } catch (err) {
+                                toast.error(err?.message || "Không gửi được lời mời kết bạn.");
+                              }
+                            }}
+                            className="px-5 py-2 rounded-lg bg-[#FA8DAE] text-white font-semibold flex items-center gap-2 hover:opacity-90 transition"
+                          >
+                            <UserPlus className="w-5 h-5" />
+                            Kết bạn
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!(await confirm("Chặn người dùng này?"))) return;
+                            try {
+                              await friendApi.block(currentUserId, profileUserId);
+                              toast.success("Đã chặn người dùng.");
+                              navigate(-1);
+                            } catch (err) {
+                              toast.error(err?.message || "Không chặn được.");
+                            }
+                          }}
+                          className="px-4 py-2 rounded-lg bg-gray-200 text-red-600 font-medium hover:bg-red-50 transition"
+                        >
+                          <Ban className="w-5 h-5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bio */}
+            {bio && (
+              <p className="text-sm text-gray-700 mb-4">{bio}</p>
             )}
+
+            {/* Tabs */}
+            <div className="flex gap-1 overflow-x-auto pb-1">
+              {[
+                { key: "all", label: "Tất cả" },
+                { key: "about", label: "Giới thiệu" },
+                { key: "posts", label: "Bài viết" },
+                { key: "friends", label: "Bạn bè" },
+                { key: "photos", label: "Ảnh" },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                    activeTab === tab.key
+                      ? "border-[#FA8DAE] text-[#FA8DAE]"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-          <div className="flex justify-between sm:justify-around text-center gap-4">
-            <div className="flex-1">
-              <p className="text-xl font-bold text-[#FA8DAE]">
-                {personalPosts.length}
-              </p>
-              <p className="text-xs text-gray-500">Bài viết</p>
-            </div>
-            <div className="flex-1">
-              <p className="text-xl font-bold text-[#6CB8FF]">{stats.friends}</p>
-              <p className="text-xs text-gray-500">Bạn bè</p>
-            </div>
-            <div className="flex-1">
-              <p className="text-xl font-bold text-[#F9C96D]">{stats.photos}</p>
-              <p className="text-xs text-gray-500">Ảnh</p>
-            </div>
-          </div>
-        </div>
+        {/* Content */}
+        <div className="max-w-6xl mx-auto px-4 py-4 space-y-4">
+          {/* About Tab */}
+          {activeTab === "about" && (
+            <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
+              <div className="space-y-3">
+                {info.work && (
+                  <div className="flex items-start gap-3">
+                    <Briefcase className="w-5 h-5 text-[#FA8DAE] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500">Công việc</p>
+                      <p className="text-sm font-medium text-gray-800">{info.work}</p>
+                    </div>
+                  </div>
+                )}
+                {info.education && (
+                  <div className="flex items-start gap-3">
+                    <GraduationCap className="w-5 h-5 text-[#FA8DAE] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500">Học vấn</p>
+                      <p className="text-sm font-medium text-gray-800">{info.education}</p>
+                    </div>
+                  </div>
+                )}
+                {info.location && (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-[#FA8DAE] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500">Nơi sống</p>
+                      <p className="text-sm font-medium text-gray-800">{info.location}</p>
+                    </div>
+                  </div>
+                )}
+                {info.joined && (
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-5 h-5 text-[#FA8DAE] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500">Tham gia</p>
+                      <p className="text-sm font-medium text-gray-800">{info.joined}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-start gap-3">
+                  <User className="w-5 h-5 text-[#FA8DAE] shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-500">Email</p>
+                    <p className="text-sm font-medium text-gray-800">{username}</p>
+                  </div>
+                </div>
+              </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab("all")}
-            className={`px-4 py-2 text-sm font-medium rounded-t-xl whitespace-nowrap transition ${
-              activeTab === "all"
-              ? "bg-[#FA8DAE] text-white"
-              : "text-gray-600 hover:bg-gray-100"
-              }`}
-          >
-            Tất cả
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("about")}
-            className={`px-4 py-2 text-sm font-medium rounded-t-xl whitespace-nowrap transition ${
-              activeTab === "about"
-              ? "bg-[#FA8DAE] text-white"
-              : "text-gray-600 hover:bg-gray-100"
-              }`}
-          >
-            Giới thiệu
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("posts")}
-            className={`px-4 py-2 text-sm font-medium rounded-t-xl whitespace-nowrap transition ${
-              activeTab === "posts"
-                ? "bg-[#FA8DAE] text-white"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            Bài viết
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("friends")}
-            className={`px-4 py-2 text-sm font-medium rounded-t-xl whitespace-nowrap transition ${
-              activeTab === "friends"
-                ? "bg-[#FA8DAE] text-white"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            Bạn bè
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("photos")}
-            className={`px-4 py-2 text-sm font-medium rounded-t-xl whitespace-nowrap transition ${
-              activeTab === "photos"
-                ? "bg-[#FA8DAE] text-white"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            Ảnh
-          </button>
-        </div>
+              {isMe && (
+                <div className="pt-3 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => { setShowEditProfile(true); setEditBio(profile.bio || ""); }}
+                    className="text-sm text-[#FA8DAE] font-medium hover:underline"
+                  >
+                    Chỉnh sửa thông tin
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* Tab content */}
-        {(activeTab === "posts" || activeTab === "all") ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-4">
-            {personalPosts.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center">
-                Chưa có bài viết nào. Chia sẻ điều gì đó từ trang chủ nhé!
-              </p>
-            ) : (
-              personalPosts.map((post) => (
-                <HomePostCard
-                  key={post.id || post._id}
-                  post={post}
-                  onToggleLike={async (id) => {
-                    try {
-                      const updated = await postApi.like(id, currentUserId);
-                      setUserPosts((prev) =>
-                        prev.map((p) =>
-                          (p.id || p._id) === id
-                            ? withLikeState({ ...p, ...updated })
-                            : p
-                        )
-                      );
-                    } catch (err) {
-                      toast.error(err?.message || "Không thể thích bài viết.");
-                    }
-                  }}
-                  onAddComment={
-                    async (id, text) => {
+          {/* Friends Tab */}
+          {activeTab === "friends" && (
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <h3 className="font-semibold text-gray-900 mb-3">Bạn bè ({userFriends.length})</h3>
+              {userFriends.length === 0 ? (
+                <p className="text-xs text-gray-500 text-center py-4">Chưa có bạn bè nào.</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {userFriends.map((f) => {
+                    const name = f.username || f.email || "User";
+                    const initial = name.charAt(0);
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => navigate(`/profile/${f.id}`)}
+                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-linear-to-br from-[#FF9A44] to-[#FA8DAE] flex items-center justify-center text-white font-bold shrink-0">
+                          {f.avatar ? (
+                            <img src={f.avatar} alt="" className="w-full h-full object-cover rounded-full" />
+                          ) : initial}
+                        </div>
+                        <p className="font-medium text-gray-900 text-sm truncate">{name}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Photos Tab */}
+          {activeTab === "photos" && (
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <h3 className="font-semibold text-gray-900 mb-3">Ảnh</h3>
+              {personalPosts.filter(p => p.imageUrl).length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {personalPosts.filter(p => p.imageUrl).map((p, idx) => (
+                    <img key={idx} src={p.imageUrl} alt="" className="w-full aspect-square object-cover rounded-lg cursor-pointer hover:opacity-80 transition" />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Chưa có ảnh nào.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Posts Tab */}
+          {activeTab === "posts" && (
+            <div className="space-y-4">
+              {personalPosts.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+                  <p className="text-gray-500">Chưa có bài viết nào.</p>
+                </div>
+              ) : (
+                personalPosts.map((post) => (
+                  <HomePostCard
+                    key={post.id || post._id}
+                    post={post}
+                    onToggleLike={async (id) => {
                       try {
-                        const user =
-                          JSON.parse(
-                            localStorage.getItem("chatwave_user") || "null"
-                          ) || {};
+                        const updated = await postApi.like(id, currentUserId);
+                        setUserPosts((prev) =>
+                          prev.map((p) =>
+                            (p.id || p._id) === id
+                              ? withLikeState({ ...p, ...updated })
+                              : p
+                          )
+                        );
+                      } catch (err) {
+                        toast.error(err?.message || "Không thể thích bài viết.");
+                      }
+                    }}
+                    onAddComment={async (id, text) => {
+                      try {
+                        const user = JSON.parse(localStorage.getItem("chatwave_user") || "null") || {};
                         if (!user || (!user.username && !user.email)) {
                           toast.error("Bạn cần đăng nhập để bình luận.");
                           return;
@@ -414,208 +509,178 @@ export default function ProfilePage() {
                           )
                         );
                       } catch (err) {
-                        toast.error(
-                          err?.message || "Không thêm được bình luận."
-                        );
+                        toast.error(err?.message || "Không thêm được bình luận.");
                       }
-                    }
-                  }
-                  onShare={handleSharePost}
-                  onDelete={isMe ? async (id) => {
-                    if (!(await confirm("Bạn có chắc muốn gỡ bài viết này?"))) return;
-                    try {
-                      await postApi.remove(id);
-                      setUserPosts((prev) =>
-                        prev.filter((p) => (p.id || p._id) !== id)
-                      );
-                      toast.success("Đã gỡ bài viết.");
-                    } catch (err) {
-                      toast.error(err?.message || "Không gỡ được bài viết.");
-                    }
-                  } : null}
-                  onEdit={isMe ? async (id, payload) => {
-                    try {
-                      const updated = await postApi.update(id, payload);
-                      setUserPosts((prev) =>
-                        prev.map((p) =>
-                          (p.id || p._id) === id ? { ...p, ...updated } : p
-                        )
-                      );
-                      toast.success("Đã cập nhật bài viết.");
-                    } catch (err) {
-                      toast.error(err?.message || "Không cập nhật được bài viết.");
-                    }
-                  } : null}
-                  onOpenComments={null}
-                />
-              ))
-            )}
-          </div>
-        ) : activeTab === "about" ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-4">
-            <div className="space-y-3">
-              {info.work && (
-                <div className="flex items-start gap-3">
-                  <Briefcase className="w-5 h-5 text-[#FA8DAE] shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-gray-500">Công việc</p>
-                    <p className="text-sm font-medium text-gray-800">
-                      {info.work}
-                    </p>
-                  </div>
-                </div>
+                    }}
+                    onShare={handleSharePost}
+                    onDelete={isMe ? async (id) => {
+                      if (!(await confirm("Bạn có chắc muốn gỡ bài viết này?"))) return;
+                      try {
+                        await postApi.remove(id);
+                        setUserPosts((prev) =>
+                          prev.filter((p) => (p.id || p._id) !== id)
+                        );
+                        toast.success("Đã gỡ bài viết.");
+                      } catch (err) {
+                        toast.error(err?.message || "Không gỡ được bài viết.");
+                      }
+                    } : null}
+                    onEdit={isMe ? async (id, payload) => {
+                      try {
+                        const updated = await postApi.update(id, payload);
+                        setUserPosts((prev) =>
+                          prev.map((p) =>
+                            (p.id || p._id) === id ? { ...p, ...updated } : p
+                          )
+                        );
+                        toast.success("Đã cập nhật bài viết.");
+                      } catch (err) {
+                        toast.error(err?.message || "Không cập nhật được bài viết.");
+                      }
+                    } : null}
+                    onOpenComments={null}
+                  />
+                ))
               )}
-              {info.education && (
-                <div className="flex items-start gap-3">
-                  <GraduationCap className="w-5 h-5 text-[#FA8DAE] shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-gray-500">Học vấn</p>
-                    <p className="text-sm font-medium text-gray-800">
-                      {info.education}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {info.location && (
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-[#FA8DAE] shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-gray-500">Nơi sống</p>
-                    <p className="text-sm font-medium text-gray-800">
-                      {info.location}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {info.joined && (
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-[#FA8DAE] shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-gray-500">Tham gia</p>
-                    <p className="text-sm font-medium text-gray-800">
-                      {info.joined}
-                    </p>
-                  </div>
-                </div>
-              )}
-              <div className="flex items-start gap-3">
-                <User className="w-5 h-5 text-[#FA8DAE] shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs text-gray-500">Email</p>
-                  <p className="text-sm font-medium text-gray-800">
-                    {username}
-                  </p>
-                </div>
-              </div>
             </div>
+          )}
 
-            {/* Nút chỉnh sửa thêm thông tin nếu là chủ tài khoản */}
-            {isMe && (
-              <div className="pt-3 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditProfile(true);
-                    setEditBio(profile.bio || "");
-                  }}
-                  className="text-sm text-[#FA8DAE] font-medium hover:underline"
-                >
-                  Chỉnh sửa thông tin
-                </button>
-              </div>
-            )}
-
-            <div className="pt-3 border-t border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-800 mb-2">
-                Bạn bè ({userFriends.length})
-              </h3>
-              {userFriends.length === 0 ? (
-                <p className="text-xs text-gray-500">
-                  Chưa có bạn bè nào hiển thị.
-                </p>
-              ) : (
-                <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-3">
-                  {userFriends.slice(0, 12).map((f) => {
-                    const name = f.username || f.email || "User";
-                    const initial = name.charAt(0);
-                    return (
+          {/* All Tab - Default */}
+          {activeTab === "all" && (
+            <>
+              <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+                {bio && (
+                  <>
+                    <h3 className="font-semibold text-gray-900">Giới thiệu</h3>
+                    <p className="text-sm text-gray-600">{bio}</p>
+                    <div className="pt-2 border-t border-gray-100">
                       <button
-                        key={f.id}
                         type="button"
-                        onClick={() => navigate(`/profile/${f.id}`)}
-                        className="flex flex-col items-center text-center gap-1"
+                        onClick={() => setActiveTab("about")}
+                        className="text-sm text-[#FA8DAE] font-medium hover:underline"
                       >
-                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-[#FFE6DD] flex items-center justify-center text-xs md:text-sm font-semibold text-[#F58A4A]">
-                          {initial}
-                        </div>
-                        <p className="text-[11px] md:text-xs text-gray-700 line-clamp-2">
-                          {name}
-                        </p>
+                        Xem thêm thông tin
                       </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        ) : activeTab === "friends" ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-4">
-            <h3 className="text-sm font-semibold text-gray-800 mb-2">
-              Bạn bè ({userFriends.length})
-            </h3>
-            {userFriends.length === 0 ? (
-              <p className="text-xs text-gray-500">
-                Chưa có bạn bè nào hiển thị.
-              </p>
-            ) : (
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-3">
-                {userFriends.map((f) => {
-                  const name = f.username || f.email || "User";
-                  const initial = name.charAt(0);
-                  return (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => navigate(`/profile/${f.id}`)}
-                      className="flex flex-col items-center text-center gap-1"
-                    >
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-[#FFE6DD] flex items-center justify-center text-xs md:text-sm font-semibold text-[#F58A4A]">
-                        {initial}
-                      </div>
-                      <p className="text-[11px] md:text-xs text-gray-700 line-clamp-2">
-                        {name}
-                      </p>
-                    </button>
-                  );
-                })}
+                    </div>
+                  </>
+                )}
+                {userFriends.length > 0 && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-gray-900">Bạn bè ({userFriends.length})</h3>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("friends")}
+                        className="text-sm text-[#FA8DAE] hover:underline"
+                      >
+                        Xem tất cả
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                      {userFriends.slice(0, 8).map((f) => {
+                        const name = f.username || f.email || "User";
+                        const initial = name.charAt(0);
+                        return (
+                          <button
+                            key={f.id}
+                            type="button"
+                            onClick={() => navigate(`/profile/${f.id}`)}
+                            className="flex flex-col items-center text-center gap-1 p-2 rounded-lg hover:bg-gray-50"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#FF9A44] to-[#FA8DAE] flex items-center justify-center text-white font-bold text-sm">
+                              {f.avatar ? (
+                                <img src={f.avatar} alt="" className="w-full h-full object-cover rounded-full" />
+                              ) : initial}
+                            </div>
+                            <p className="text-xs text-gray-700 truncate w-full">{name}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-4">
-            <h3 className="text-sm font-semibold text-gray-800 mb-2">
-              Ảnh từ bài viết
-            </h3>
-            {userPosts.some((p) => p.imageUrl) ? (
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-3">
-                {userPosts
-                  .filter((p) => p.imageUrl)
-                  .map((p) => (
-                    <img
-                      key={p.id}
-                      src={p.imageUrl}
-                      alt=""
-                      className="w-full h-24 md:h-28 object-cover rounded-xl border border-gray-100"
+              <div className="space-y-4">
+                {personalPosts.length === 0 ? (
+                  <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+                    <p className="text-gray-500">Chưa có bài viết nào.</p>
+                  </div>
+                ) : (
+                  personalPosts.map((post) => (
+                    <HomePostCard
+                      key={post.id || post._id}
+                      post={post}
+                      onToggleLike={async (id) => {
+                        try {
+                          const updated = await postApi.like(id, currentUserId);
+                          setUserPosts((prev) =>
+                            prev.map((p) =>
+                              (p.id || p._id) === id
+                                ? withLikeState({ ...p, ...updated })
+                                : p
+                            )
+                          );
+                        } catch (err) {
+                          toast.error(err?.message || "Không thể thích bài viết.");
+                        }
+                      }}
+                      onAddComment={async (id, text) => {
+                        try {
+                          const user = JSON.parse(localStorage.getItem("chatwave_user") || "null") || {};
+                          if (!user || (!user.username && !user.email)) {
+                            toast.error("Bạn cần đăng nhập để bình luận.");
+                            return;
+                          }
+                          const updated = await postApi.addComment(id, {
+                            author: user.username || "User",
+                            authorAvatar: user.avatar || null,
+                            text,
+                          });
+                          setUserPosts((prev) =>
+                            prev.map((p) =>
+                              (p.id || p._id) === id
+                                ? withLikeState({ ...p, ...updated })
+                                : p
+                            )
+                          );
+                        } catch (err) {
+                          toast.error(err?.message || "Không thêm được bình luận.");
+                        }
+                      }}
+                      onShare={handleSharePost}
+                      onDelete={isMe ? async (id) => {
+                        if (!(await confirm("Bạn có chắc muốn gỡ bài viết này?"))) return;
+                        try {
+                          await postApi.remove(id);
+                          setUserPosts((prev) =>
+                            prev.filter((p) => (p.id || p._id) !== id)
+                          );
+                          toast.success("Đã gỡ bài viết.");
+                        } catch (err) {
+                          toast.error(err?.message || "Không gỡ được bài viết.");
+                        }
+                      } : null}
+                      onEdit={isMe ? async (id, payload) => {
+                        try {
+                          const updated = await postApi.update(id, payload);
+                          setUserPosts((prev) =>
+                            prev.map((p) =>
+                              (p.id || p._id) === id ? { ...p, ...updated } : p
+                            )
+                          );
+                          toast.success("Đã cập nhật bài viết.");
+                        } catch (err) {
+                          toast.error(err?.message || "Không cập nhật được bài viết.");
+                        }
+                      } : null}
+                      onOpenComments={null}
                     />
-                  ))}
+                  ))
+                )}
               </div>
-            ) : (
-              <p className="text-xs text-gray-500">
-                Chưa có ảnh nào từ bài viết.
-              </p>
-            )}
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {showEditProfile && (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { userApi } from "../api/userApi";
 import { friendApi } from "../api/friendApi";
 import { postApi } from "../api/postApi";
@@ -18,6 +18,9 @@ export function useProfile(profileIdParam, mockProfile, options = {}) {
   const [isFriend, setIsFriend] = useState(false);
   const [userPosts, setUserPosts] = useState([]);
   const [userFriends, setUserFriends] = useState([]);
+
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   const storedUser = getCurrentUser();
   const currentUserId = storedUser?.id || storedUser?._id || null;
@@ -63,7 +66,7 @@ export function useProfile(profileIdParam, mockProfile, options = {}) {
       } catch (err) {
         if (isMounted) {
           setProfile(mockProfile || {});
-          onError?.(err);
+          onErrorRef.current?.(err);
         }
       } finally {
         if (isMounted) {
@@ -73,9 +76,11 @@ export function useProfile(profileIdParam, mockProfile, options = {}) {
     };
 
     const fetchFriendState = async () => {
-      if (!currentUserId || !profileUserId || isMe) return;
+      const user = getCurrentUser();
+      const userId = user?.id || user?._id || null;
+      if (!userId || !profileUserId || isMe) return;
       try {
-        const friends = await friendApi.getFriends(currentUserId);
+        const friends = await friendApi.getFriends(userId);
         const found = (friends || []).some(
           (f) => String(f.id) === String(profileUserId)
         );
@@ -91,7 +96,7 @@ export function useProfile(profileIdParam, mockProfile, options = {}) {
     return () => {
       isMounted = false;
     };
-  }, [profileUserId, currentUserId, isMe, mockProfile, onError]);
+  }, [profileUserId]);
 
   useEffect(() => {
     fetch();

@@ -4,6 +4,7 @@ import {
   Home as HomeIcon,
   MessageCircle,
   Users,
+  UserCircle,
   ClipboardList,
   Bot,
 } from "lucide-react";
@@ -171,6 +172,18 @@ export default function MainLayout({
           </button>
           <button
             type="button"
+            onClick={() => handleSetActiveNav("groups")}
+            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl ${
+              activeNav === "groups"
+                ? "text-[#FA8DAE] bg-[#FFF1F2]"
+                : "text-gray-500"
+            }`}
+          >
+            <Users className="w-5 h-5 mb-0.5" />
+            <span>Nhóm</span>
+          </button>
+          <button
+            type="button"
             onClick={() => handleSetActiveNav("friends")}
             className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl ${
               activeNav === "friends"
@@ -178,7 +191,7 @@ export default function MainLayout({
                 : "text-gray-500"
             }`}
           >
-            <Users className="w-5 h-5 mb-0.5" />
+            <UserCircle className="w-5 h-5 mb-0.5" />
             <span>Bạn bè</span>
           </button>
           <button

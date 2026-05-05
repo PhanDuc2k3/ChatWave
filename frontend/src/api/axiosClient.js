@@ -1,25 +1,70 @@
 import axios from "axios";
+import { CORE_API } from "../utils/apiConfig";
 
-const baseURL =
-  (import.meta.env.MODE === "development" && "http://localhost:5001/api/v1") ||
-  import.meta.env.VITE_API_BASE_URL ||
-  "http://localhost:5001/api/v1";
+const IS_DEV = import.meta.env.MODE === "development";
 
-// Tạo axios instance riêng cho refresh để tránh loop
-const refreshAxios = axios.create({
-  baseURL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+// Base URL - sẽ được xác định sau khi test
+let currentBaseUrl = CORE_API.primary;
 
+// Tạo axios instance với baseURL tạm thời
 const axiosClient = axios.create({
-  baseURL,
+  baseURL: currentBaseUrl,
   headers: {
     "Content-Type": "application/json",
   },
   withCredentials: false,
 });
+
+// Refresh axios instance
+const refreshAxios = axios.create({
+  baseURL: currentBaseUrl,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Test và switch sang localhost hoặc fallback
+async function ensureCorrectBaseUrl() {
+  if (!IS_DEV) {
+    currentBaseUrl = CORE_API.vps;
+    axiosClient.defaults.baseURL = currentBaseUrl;
+    refreshAxios.defaults.baseURL = currentBaseUrl;
+    console.log("[API] Using VPS:", currentBaseUrl);
+    return currentBaseUrl;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+    // Core API health endpoint là /api/v1/health
+    await fetch(`${CORE_API.localhost}/health`, {
+      method: "GET",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    currentBaseUrl = CORE_API.localhost;
+    axiosClient.defaults.baseURL = currentBaseUrl;
+    refreshAxios.defaults.baseURL = currentBaseUrl;
+    console.log("[API] Using localhost:", currentBaseUrl);
+    return currentBaseUrl;
+  } catch {
+    currentBaseUrl = CORE_API.vps;
+    axiosClient.defaults.baseURL = currentBaseUrl;
+    refreshAxios.defaults.baseURL = currentBaseUrl;
+    console.warn("[API] Localhost unavailable, using VPS:", currentBaseUrl);
+    return currentBaseUrl;
+  }
+}
+
+// Initialize ngay - async nhưng các API calls sẽ đợi nếu cần
+let initPromise = ensureCorrectBaseUrl();
+
+// Hàm để các API calls đợi initialization
+export async function waitForInit() {
+  return initPromise;
+}
 
 // Queue để xử lý các request bị chặn khi đang refresh
 let isRefreshing = false;
@@ -65,7 +110,6 @@ axiosClient.interceptors.response.use(
     // Nếu là lỗi 401 và không phải request thử lại và không phải auth endpoint
     if (error?.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
-        // Đang refresh, đợi token mới
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -81,7 +125,6 @@ axiosClient.interceptors.response.use(
       const refreshToken = localStorage.getItem("chatwave_refresh_token");
 
       if (!refreshToken) {
-        // Không có refresh token, chuyển về login
         isRefreshing = false;
         processQueue(new Error("No refresh token"), null);
         logout();
@@ -89,26 +132,24 @@ axiosClient.interceptors.response.use(
       }
 
       try {
-        // Gọi API refresh token
+        // Đợi baseURL được xác định trước
+        await initPromise;
+        
         const response = await refreshAxios.post("/auth/refresh", { refreshToken });
         const { accessToken, refreshToken: newRefreshToken } = response.data;
 
         if (accessToken) {
-          // Lưu token mới
           localStorage.setItem("chatwave_token", accessToken);
           if (newRefreshToken) {
             localStorage.setItem("chatwave_refresh_token", newRefreshToken);
           }
 
-          // Xử lý các request đang chờ
           processQueue(null, accessToken);
 
-          // Thử lại request ban đầu với token mới
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return axiosClient(originalRequest);
         }
       } catch (refreshError) {
-        // Refresh thất bại
         processQueue(refreshError, null);
         logout();
         return Promise.reject(refreshError?.response?.data || { message: "Phiên đăng nhập hết hạn" });
@@ -133,5 +174,7 @@ export const logout = () => {
 export const isAuthenticated = () => {
   return !!localStorage.getItem("chatwave_token");
 };
+
+export const getCurrentBaseUrl = () => currentBaseUrl;
 
 export default axiosClient;
