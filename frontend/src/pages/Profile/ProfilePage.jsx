@@ -250,7 +250,18 @@ export default function ProfilePage() {
                       <>
                         <button
                           type="button"
-                          onClick={() => navigate("/message")}
+                          onClick={async () => {
+                            if (!currentUserId) {
+                              toast.error("Bạn cần đăng nhập để nhắn tin.");
+                              return;
+                            }
+                            if (!profileUserId) {
+                              toast.error("Không tìm thấy người dùng.");
+                              return;
+                            }
+                            // Navigate to message page with userId to open chat
+                            navigate(`/message?userId=${profileUserId}`);
+                          }}
                           className="px-4 py-2 rounded-lg bg-[#F9C96D] text-gray-800 font-semibold flex items-center gap-2 hover:bg-[#F7B944] transition"
                         >
                           <MessageCircle className="w-5 h-5" />

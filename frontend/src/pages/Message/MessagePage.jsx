@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { ClipboardList } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ClipboardList, MessageCircle } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { slides } from "./messageData";
 import MessageHeaderControls from "./MessageHeaderControls";
@@ -8,15 +8,18 @@ import MessageListSidebar from "./MessageListSidebar";
 import MessageContent from "./MessageContent";
 import CreateTaskModal from "./CreateTaskModal";
 import MessageEmptyState from "./MessageEmptyState";
+import UserSearchModal from "./UserSearchModal";
 import { getChatSocket } from "../../socket/chatSocket";
 import { messageApi } from "../../api/messageApi";
 import { chatGroupApi } from "../../api/chatGroupApi";
 import { taskApi } from "../../api/taskApi";
 import { friendApi } from "../../api/friendApi";
+import { userApi } from "../../api/userApi";
 import toast from "react-hot-toast";
 
 export default function MessagePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeSlide, setActiveSlide] = useState(0);
   const [activeTab, setActiveTab] = useState("overview");
   const [sortOption, setSortOption] = useState("latest");
@@ -32,6 +35,7 @@ export default function MessagePage() {
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [invitedMembers, setInvitedMembers] = useState([]);
   const [friendSuggestions, setFriendSuggestions] = useState([]);
+  const [showNewMessage, setShowNewMessage] = useState(false);
 
   const currentUserId = useMemo(() => {
     try {
@@ -42,10 +46,15 @@ export default function MessagePage() {
     }
   }, []);
 
+  // Get targetUserId from URL - only read once when component mounts
+  const initialTargetUserId = React.useRef(searchParams.get("userId")).current;
+
   useEffect(() => {
     const storedUser =
       JSON.parse(localStorage.getItem("chatwave_user") || "null") || null;
     const currentUserId = storedUser?.id || storedUser?._id || null;
+    
+    console.log("[MessagePage] Mount, initialTargetUserId:", initialTargetUserId);
 
     const fetchConversations = async () => {
       try {
@@ -56,6 +65,57 @@ export default function MessagePage() {
           unreadCount: c.unreadCount ?? 0,
         }));
         setFriends(mapped);
+        
+        // Handle targetUserId ONLY on initial mount
+        if (initialTargetUserId) {
+          const targetUserId = initialTargetUserId;
+          
+          // Check if conversation already exists
+          const existing = mapped.find((f) => 
+            String(f.userId) === String(targetUserId) || 
+            String(f.partnerId) === String(targetUserId)
+          );
+          
+          if (existing) {
+            setSelectedChat(existing);
+            console.log("[MessagePage] setSelectedChat (existing):", existing);
+          } else {
+            // Create new conversation
+            try {
+              const user = await userApi.getById(targetUserId);
+              if (user) {
+                const userA = String(currentUserId);
+                const userB = String(targetUserId);
+                const [id1, id2] = userA < userB ? [userA, userB] : [userB, userA];
+                const conversationId = `direct:${id1}:${id2}`;
+
+                const newConversation = {
+                  id: conversationId,
+                  userId: targetUserId,
+                  partnerId: targetUserId,
+                  name: user.username || user.email || user.name || "User",
+                  avatar: user.avatar || null,
+                  message: null,
+                  status: "Offline",
+                  lastActive: null,
+                  unreadCount: 0,
+                };
+
+                setFriends((prev) => {
+                  const exists = prev.some((f) => String(f.userId) === String(targetUserId));
+                  if (exists) return prev;
+                  return [newConversation, ...prev];
+                });
+                setSelectedChat(newConversation);
+                console.log("[MessagePage] setSelectedChat called with:", newConversation);
+              }
+            } catch (err) {
+              console.error("Failed to add conversation:", err);
+            }
+          }
+          // Clear URL after processing
+          navigate("/message", { replace: true });
+        }
       } catch (err) {
         toast.error(
           err?.message || "Không tải được danh sách cuộc trò chuyện."
@@ -89,7 +149,7 @@ export default function MessagePage() {
 
     fetchConversations();
     fetchGroups();
-  }, []);
+  }, []); // Empty deps - only run on mount
 
   // Join tất cả conversation rooms để nhận new_message realtime cho list
   useEffect(() => {
@@ -190,18 +250,45 @@ export default function MessagePage() {
     );
   };
 
+  const handleSelectNewConversation = (conversation) => {
+    // Add to friends list if not already there
+    setFriends((prev) => {
+      const exists = prev.some((f) => String(f.id) === String(conversation.id));
+      if (exists) return prev;
+      return [conversation, ...prev];
+    });
+    // Select the conversation - this will auto-switch to chat view
+    setSelectedChat(conversation);
+    // Ensure we show the conversations view
+    if (!hasConversations) {
+      // Already handled by hasConversations being computed from friends.length + groups.length
+    }
+  };
+
   const headerContent = hasConversations ? (
-    <MessageHeaderControls
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      sortOption={sortOption}
-      setSortOption={setSortOption}
-      counts={{
-        friendsCount: friends.length,
-        groupsCount: groups.length,
-        unreadCount: unread.length,
-      }}
-    />
+    <>
+      <div className="flex items-center justify-between w-full">
+        <MessageHeaderControls
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          sortOption={sortOption}
+          setSortOption={setSortOption}
+          counts={{
+            friendsCount: friends.length,
+            groupsCount: groups.length,
+            unreadCount: unread.length,
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setShowNewMessage(true)}
+          className="ml-2 px-3 py-1.5 text-xs rounded-full bg-[#FA8DAE] text-white hover:bg-[#E87A9B] transition flex items-center gap-1"
+        >
+          <MessageCircle className="w-4 h-4" />
+          <span className="hidden sm:inline">Tin nhắn mới</span>
+        </button>
+      </div>
+    </>
   ) : null;
 
   return (
@@ -394,11 +481,21 @@ export default function MessagePage() {
             </div>
           </>
         ) : (
-          <MessageEmptyState
-            slides={slides}
-            activeSlide={activeSlide}
-            setActiveSlide={setActiveSlide}
-          />
+          <>
+            <MessageEmptyState
+              slides={slides}
+              activeSlide={activeSlide}
+              setActiveSlide={setActiveSlide}
+            />
+            <button
+              type="button"
+              onClick={() => setShowNewMessage(true)}
+              className="mt-4 px-6 py-3 rounded-full bg-[#FA8DAE] text-white font-medium hover:bg-[#E87A9B] transition flex items-center gap-2 mx-auto"
+            >
+              <MessageCircle className="w-5 h-5" />
+              Nhắn tin với người lạ
+            </button>
+          </>
         )}
       </div>
 
@@ -479,7 +576,7 @@ export default function MessagePage() {
                             }}
                             className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
                           >
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FA8DAE] to-[#FFB3C6] flex items-center justify-center text-white text-xs font-semibold shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#FA8DAE] to-[#FFB3C6] flex items-center justify-center text-white text-xs font-semibold shrink-0">
                               {(f.username || f.email || "U")[0].toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
@@ -606,6 +703,13 @@ export default function MessagePage() {
           currentUserId={currentUserId}
           onClose={() => setShowCreateTask(false)}
           onSuccess={handleCreateTaskFromMessage}
+        />
+      )}
+
+      {showNewMessage && (
+        <UserSearchModal
+          onClose={() => setShowNewMessage(false)}
+          onSelectConversation={handleSelectNewConversation}
         />
       )}
     </MainLayout>

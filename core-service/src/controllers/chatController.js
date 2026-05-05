@@ -61,10 +61,27 @@ async function getFiles(req, res, next) {
   }
 }
 
+async function getOrCreateConversation(req, res, next) {
+  try {
+    const { targetUserId } = req.query;
+    const currentUserId = req.user?.id;
+
+    if (!currentUserId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const conversation = await conversationService.getOrCreateConversation(currentUserId, targetUserId);
+    res.json(conversation);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getMessages,
   sendMessage,
   getConversations,
+  getOrCreateConversation,
   getMedia,
   getFiles,
 };

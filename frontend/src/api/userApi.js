@@ -16,3 +16,11 @@ export const userApi = {
   },
 };
 
+export const chatApi = {
+  getOrCreateConversation(targetUserId) {
+    return axiosClient.get("/chats/conversation", {
+      params: { targetUserId },
+    });
+  },
+};
+

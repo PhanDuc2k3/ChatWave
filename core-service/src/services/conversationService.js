@@ -117,6 +117,59 @@ async function getConversations(currentUserId) {
   });
 }
 
+async function getOrCreateConversation(currentUserId, targetUserId) {
+  if (!currentUserId || !targetUserId) {
+    const err = new Error("currentUserId and targetUserId are required");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (currentUserId === targetUserId) {
+    const err = new Error("Cannot create conversation with yourself");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Tạo conversation ID theo format: direct:{id1}:{id2} (id1 < id2)
+  const userA = String(currentUserId);
+  const userB = String(targetUserId);
+  const [id1, id2] = userA < userB ? [userA, userB] : [userB, userA];
+  const conversationId = `direct:${id1}:${id2}`;
+
+  // Get user info
+  const targetUser = await User.findById(targetUserId).lean();
+  if (!targetUser) {
+    const err = new Error("User not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Get last message if exists
+  const lastMessage = await ChatMessage.findOne({ conversationId })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return {
+    id: conversationId,
+    userId: targetUserId,
+    partnerId: targetUserId,
+    name: targetUser.username || targetUser.email || "User",
+    avatar: targetUser.avatar || null,
+    message: lastMessage?.text || null,
+    status: targetUser.status || "Offline",
+    lastActive: lastMessage?.createdAt
+      ? new Date(lastMessage.createdAt).toLocaleString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          day: "2-digit",
+          month: "2-digit",
+        })
+      : null,
+    messageCount: 0,
+  };
+}
+
 module.exports = {
   getConversations,
+  getOrCreateConversation,
 };
