@@ -42,7 +42,8 @@ export default function GroupDetailPage() {
   const myRole = group?.members?.find((m) => m.userId === currentUserId)?.role;
   const canManageGroup = myRole === "owner" || myRole === "admin";
   const canAssignAdmin = myRole === "owner";
-  const canLeaveGroup = isMember && myRole !== "owner";
+  // Tất cả thành viên đều có thể rời nhóm (trừ owner nếu còn thành viên khác)
+  const canLeaveGroup = isMember;
 
   const withLikeState = (post) => {
     const likedBy = post.likedBy || [];
@@ -200,7 +201,7 @@ export default function GroupDetailPage() {
     if (!(await confirm("Bạn có chắc muốn rời khỏi nhóm này?"))) return;
     try {
       setJoining(true);
-      await groupApi.removeMember(id, currentUserId);
+      await groupApi.leaveGroup(id);
       toast.success("Bạn đã rời khỏi nhóm.");
       navigate("/groups");
     } catch (err) {

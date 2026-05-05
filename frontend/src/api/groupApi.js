@@ -61,5 +61,9 @@ export const groupApi = {
   removeMember(groupId, memberId) {
     return axiosClient.delete(`/groups/${groupId}/members/${memberId}`);
   },
+
+  leaveGroup(groupId) {
+    return axiosClient.post(`/groups/${groupId}/leave`);
+  },
 };
 

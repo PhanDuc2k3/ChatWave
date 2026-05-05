@@ -218,6 +218,28 @@ async function removeMember(groupId, userId, callerUserId) {
   return groupRepository.removeMember(groupId, userId);
 }
 
+async function leaveGroup(groupId, userId) {
+  const group = await groupRepository.findById(groupId);
+  if (!group) return null;
+  
+  const member = group.members?.find((m) => m.userId === String(userId));
+  if (!member) return null;
+  
+  // Leader không thể tự rời nhóm nếu còn thành viên khác
+  if (member.role === "leader") {
+    const otherMembers = group.members?.filter(
+      (m) => m.userId !== String(userId)
+    );
+    if (otherMembers && otherMembers.length > 0) {
+      const err = new Error("Leader không thể rời nhóm khi còn thành viên khác. Hãy chuyển quyền trước.");
+      err.statusCode = 400;
+      throw err;
+    }
+  }
+  
+  return groupRepository.removeMember(groupId, userId);
+}
+
 async function updateVisibility(groupId, visibility, userId) {
   const group = await groupRepository.findById(groupId);
   if (!group) return null;
@@ -295,6 +317,8 @@ module.exports = {
   searchGroups,
   isMember,
   addMember,
+  removeMember,
+  leaveGroup,
   requestToJoin,
   getPendingJoinRequests,
   getMyJoinRequest,

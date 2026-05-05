@@ -286,9 +286,11 @@ export default function HomePage() {
     let cancelled = false;
     const fetchMyGroups = async () => {
       try {
-        const mine = await groupApi.getMyGroups(currentUserId);
+        const data = await groupApi.getMyGroups(currentUserId);
         if (!cancelled) {
-          setMyGroups(mine || []);
+          // Normalize data - có thể trả về array hoặc object
+          const groups = Array.isArray(data) ? data : (data?.data || data?.groups || []);
+          setMyGroups(groups);
         }
       } catch {
         if (!cancelled) {
@@ -927,17 +929,28 @@ export default function HomePage() {
                 <div className="w-full flex flex-col gap-4 pb-6">
                   {activeGroupInfo ? (
                     <>
+                      {/* Header với nút quay lại và tạo nhóm */}
                       <div className="w-full rounded-2xl bg-white shadow-sm border border-[#E2E8F0] px-4 py-4 md:px-5 md:py-4">
-                        <h2 className="text-sm md:text-base font-semibold text-gray-900 mb-1">
-                          Nhóm trên ChatWave
-                        </h2>
-                        <p className="text-xs md:text-sm text-gray-500 mb-3">
-                          Kết nối cùng những người có chung sở thích và xem bài viết trong các nhóm bạn tham gia.
-                        </p>
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                          <p className="text-xs md:text-sm text-gray-500">
-                            Bạn có thể tham gia nhóm sẵn có hoặc tự tạo một không gian riêng cho team của mình.
-                          </p>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setActiveGroup(null)}
+                              className="p-2 rounded-full hover:bg-gray-100"
+                            >
+                              <span className="text-gray-600">←</span>
+                            </button>
+                            <div>
+                              <p className="text-sm md:text-base font-semibold text-gray-900">
+                                {activeGroupInfo.name}
+                              </p>
+                              {activeGroupInfo.description && (
+                                <p className="text-xs text-gray-500 line-clamp-1">
+                                  {activeGroupInfo.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                           <button
                             type="button"
                             onClick={() => setShowCreateGroup(true)}
@@ -950,6 +963,38 @@ export default function HomePage() {
                           <p className="text-xs text-red-500 mb-2">
                             {groupsError}
                           </p>
+                        )}
+                        {myGroups.length > 0 && (
+                          <div className="mb-3">
+                            <p className="font-semibold text-gray-900 mb-2 text-sm">
+                              Nhóm của bạn
+                            </p>
+                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                              {myGroups.slice(0, 8).map((g) => {
+                                const id = g.id || g._id;
+                                const name = g.name || "Nhóm không tên";
+                                const initial = name.charAt(0).toUpperCase();
+                                const count = g.membersCount || g.members?.length || 0;
+                                return (
+                                  <div
+                                    key={id}
+                                    className="flex-shrink-0 w-36 bg-gradient-to-br from-[#DBEAFE] to-[#BFDBFE] rounded-xl p-3 flex flex-col items-center text-center cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={() => setActiveGroup(id)}
+                                  >
+                                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm text-sm font-bold text-[#2563EB] mb-2">
+                                      {initial}
+                                    </span>
+                                    <p className="text-xs font-semibold text-gray-900 truncate w-full">
+                                      {name}
+                                    </p>
+                                    <p className="text-[10px] text-gray-500 mt-0.5">
+                                      {count} thành viên
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs md:text-sm">
                           <div className="border border-gray-100 rounded-xl p-3 col-span-1 md:col-span-2">
@@ -1032,13 +1077,50 @@ export default function HomePage() {
                       </div>
                     </>
                   ) : (
-                    <div className="w-full rounded-2xl bg-white shadow-sm border border-[#E2E8F0] px-4 py-6 text-center">
-                      <p className="text-sm md:text-base font-medium text-gray-700 mb-2">
-                        Chưa chọn nhóm
-                      </p>
-                      <p className="text-xs md:text-sm text-gray-500">
-                        Hãy chọn một nhóm từ danh sách bên trái để xem bài viết.
-                      </p>
+                    <div className="w-full rounded-2xl bg-white shadow-sm border border-[#E2E8F0] px-4 py-4 md:px-5 md:py-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <p className="text-xs md:text-sm text-gray-500">
+                          Chọn một nhóm để xem bài viết hoặc tham gia nhóm mới.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setShowCreateGroup(true)}
+                          className="px-3 py-1.5 rounded-full bg-[#FA8DAE] text-white text-xs md:text-sm font-semibold hover:opacity-90 transition"
+                        >
+                          + Tạo nhóm mới
+                        </button>
+                      </div>
+                      {myGroups.length === 0 ? (
+                        <p className="text-xs md:text-sm text-gray-500 text-center py-4">
+                          Bạn chưa tham gia nhóm nào.
+                        </p>
+                      ) : (
+                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                          {myGroups.slice(0, 8).map((g) => {
+                            const id = g.id || g._id;
+                            const name = g.name || "Nhóm không tên";
+                            const initial = name.charAt(0).toUpperCase();
+                            const count = g.membersCount || g.members?.length || 0;
+                            return (
+                              <div
+                                key={id}
+                                className="flex-shrink-0 w-36 bg-gradient-to-br from-[#DBEAFE] to-[#BFDBFE] rounded-xl p-3 flex flex-col items-center text-center cursor-pointer hover:scale-105 transition-transform"
+                                onClick={() => setActiveGroup(id)}
+                              >
+                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm text-sm font-bold text-[#2563EB] mb-2">
+                                  {initial}
+                                </span>
+                                <p className="text-xs font-semibold text-gray-900 truncate w-full">
+                                  {name}
+                                </p>
+                                <p className="text-[10px] text-gray-500 mt-0.5">
+                                  {count} thành viên
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

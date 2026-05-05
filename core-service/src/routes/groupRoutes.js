@@ -45,6 +45,9 @@ router.post("/:id/transfer-leadership", groupController.transferLeadership);
 // DELETE /api/v1/groups/:id/members/:memberId
 router.delete("/:id/members/:memberId", groupController.removeMember);
 
+// POST /api/v1/groups/:id/leave (any member can leave)
+router.post("/:id/leave", groupController.leaveGroup);
+
 // DELETE /api/v1/groups/:id (only leader can delete)
 router.delete("/:id", groupController.deleteGroup);
 

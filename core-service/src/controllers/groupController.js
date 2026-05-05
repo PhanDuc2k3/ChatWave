@@ -106,6 +106,21 @@ async function removeMember(req, res, next) {
   }
 }
 
+async function leaveGroup(req, res, next) {
+  try {
+    const callerId = req.user?.id;
+    if (!callerId) return res.status(401).json({ message: "Chưa đăng nhập" });
+    const group = await groupService.leaveGroup(
+      req.params.id,
+      callerId
+    );
+    if (!group) return res.status(404).json({ message: "Group not found" });
+    res.json(group);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getPendingJoinRequests(req, res, next) {
   try {
     const list = await groupService.getPendingJoinRequests(req.params.id);
@@ -216,6 +231,7 @@ module.exports = {
   rejectJoinRequest,
   updateMemberRole,
   removeMember,
+  leaveGroup,
   updateVisibility,
   transferLeadership,
   deleteGroup,
