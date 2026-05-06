@@ -287,9 +287,8 @@ export default function Header({ newMessageNotif, onCloseMessageNotif }) {
                   </span>
                 </>
               ) : (
-                <div className="flex items-center gap-1.5 bg-white/80 px-3 py-1.5 rounded-full shadow-sm">
-                  <User className="w-4 h-4 text-gray-600" />
-                  <span className="hidden sm:inline text-sm text-gray-700">Đăng nhập</span>
+                <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
+                  <User className="w-4 h-4 text-gray-700" />
                 </div>
               )}
             </button>
