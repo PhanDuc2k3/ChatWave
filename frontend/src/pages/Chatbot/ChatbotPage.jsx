@@ -253,7 +253,7 @@ export default function ChatbotPage() {
   }
 
   return (
-    <MainLayout>
+    <MainLayout hideBottomNav={mobileView === "chat"}>
       {/* MOBILE LAYOUT */}
       <div className="h-full flex flex-col bg-[#F3F6FB] md:hidden">
         {mobileView === "list" ? (
@@ -320,68 +320,53 @@ export default function ChatbotPage() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col min-w-0">
-            <div className="shrink-0 px-4 py-3 bg-white border-b border-[#E2E8F0] flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+          <div className="flex-1 flex flex-col min-w-0 bg-white">
+            {/* Header mobile - theo thiết kế mới */}
+            <div className="sticky top-0 z-20 bg-white border-b border-gray-100 shrink-0 shadow-sm">
+              <div className="flex items-center gap-3 px-3 py-2.5">
                 <button
                   type="button"
                   onClick={() => setMobileView("list")}
-                  className="mr-1 w-9 h-9 rounded-full flex items-center justify-center bg-white border border-[#E2E8F0]"
+                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition -ml-1"
                   title="Quay lại danh sách"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-5 h-5 text-gray-700" />
                 </button>
-                <div>
-                  <h1 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                    <Bot className="w-5 h-5 text-[#6CB8FF]" />
+                <div className="w-11 h-11 rounded-full bg-linear-to-br from-[#6CB8FF] to-[#A78BFA] flex items-center justify-center text-sm font-semibold text-white overflow-hidden shrink-0">
+                  <Bot className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 truncate text-sm">
                     Chatbot AI
-                  </h1>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
-                    Trợ lý AI –{" "}
-                    {currentSession
-                      ? currentSession.title
-                      : "Cuộc hội thoại mới"}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {currentSession ? currentSession.title : "Cuộc hội thoại mới"}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {currentSession && (
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={(e) =>
-                      handleDeleteSession(
-                        e,
-                        currentSession.id || currentSession._id
-                      )
-                    }
-                    className="w-9 h-9 rounded-full flex items-center justify-center border border-red-100 text-red-500 hover:bg-red-50"
-                    title="Xóa cuộc hội thoại"
+                    onClick={handleCreateTasksFromChat}
+                    disabled={chatLoading || createTasksLoading}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-[#6CB8FF] hover:bg-blue-50 transition disabled:opacity-50"
+                    title="Tạo task"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <ClipboardList className="w-5 h-5" />
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleCreateTasksFromChat}
-                  disabled={chatLoading || createTasksLoading}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#6CB8FF]/10 text-[#6CB8FF] hover:bg-[#6CB8FF]/20 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                  <ClipboardList className="w-4 h-4" />
-                  Tạo task
-                </button>
+                </div>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`flex gap-3 ${
+                  className={`flex gap-2 ${
                     msg.role === "user" ? "flex-row-reverse" : ""
                   }`}
                 >
                   <div
-                    className={`w-9 h-9 rounded-full shrink-0 flex items-center justify-center ${
+                    className={`w-8 h-8 md:w-9 md:h-9 rounded-full shrink-0 flex items-center justify-center ${
                       msg.role === "user"
                         ? "bg-[#FA8DAE] text-white"
                         : "bg-[#6CB8FF] text-white"
@@ -394,7 +379,7 @@ export default function ChatbotPage() {
                     )}
                   </div>
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
+                    className={`max-w-[85%] sm:max-w-[80%] md:max-w-[75%] rounded-2xl px-3 py-2 md:px-4 md:py-2.5 ${
                       msg.role === "user"
                         ? "bg-[#FA8DAE] text-white rounded-tr-sm"
                         : "bg-white border border-[#E2E8F0] text-gray-800 rounded-tl-sm"
@@ -407,7 +392,7 @@ export default function ChatbotPage() {
                       <button
                         onClick={() => handleApplyAiAnalyze(msg.result)}
                         disabled={applyLoading || !msg.result.validActions?.length || applySuccess}
-                        className={`mt-3 flex items-center gap-2 px-3 py-1.5 text-white rounded-lg text-xs font-medium transition ${
+                        className={`mt-2 md:mt-3 flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 text-white rounded-lg text-xs font-medium transition ${
                           applySuccess
                             ? "bg-green-500 cursor-default"
                             : "bg-[#FA8DAE] hover:bg-[#e87a9c] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -435,11 +420,11 @@ export default function ChatbotPage() {
                 </div>
               ))}
               {chatLoading && (
-                <div className="flex gap-3">
-                  <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center bg-[#6CB8FF] text-white">
+                <div className="flex gap-2">
+                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-full shrink-0 flex items-center justify-center bg-[#6CB8FF] text-white">
                     <Bot className="w-4 h-4" />
                   </div>
-                  <div className="bg-white border border-[#E2E8F0] rounded-2xl rounded-tl-sm px-4 py-2.5">
+                  <div className="bg-white border border-[#E2E8F0] rounded-2xl rounded-tl-sm px-3 py-2.5 md:px-4">
                     <div className="flex gap-1">
                       <span
                         className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
@@ -462,7 +447,10 @@ export default function ChatbotPage() {
 
             <form
               onSubmit={handleSubmit}
-              className="shrink-0 px-4 py-3 bg-white border-t border-[#E2E8F0]"
+              className="shrink-0 px-3 py-2.5 md:px-4 md:py-3 bg-white border-t border-gray-100"
+              style={{ 
+                paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))'
+              }}
             >
               <div className="flex gap-2">
                 <input
@@ -471,15 +459,15 @@ export default function ChatbotPage() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Nhập tin nhắn..."
-                  className="flex-1 rounded-2xl border border-[#E2E8F0] px-4 py-2.5 text-sm outline-none focus:border-[#6CB8FF] focus:ring-1 focus:ring-[#6CB8FF]"
+                  className="flex-1 rounded-2xl border border-[#E2E8F0] px-3 py-2 md:px-4 md:py-2.5 text-sm outline-none focus:border-[#6CB8FF] focus:ring-1 focus:ring-[#6CB8FF]"
                   disabled={chatLoading}
                 />
                 <button
                   type="submit"
                   disabled={chatLoading || !input.trim()}
-                  className="w-11 h-11 rounded-full bg-[#6CB8FF] text-white flex items-center justify-center hover:bg-[#5AA3E8] disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[#6CB8FF] text-white flex items-center justify-center hover:bg-[#5AA3E8] disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
-                  <Send className="w-5 h-5" />
+                  <Send className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
               </div>
             </form>
