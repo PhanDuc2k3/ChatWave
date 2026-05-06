@@ -160,7 +160,7 @@ export default function MainLayout({
   };
 
   return (
-    <div className={`min-h-screen bg-[#FFF9F2] ${hideBottomNav ? '' : 'pb-14'}`}>
+    <div className={`h-screen overflow-hidden bg-[#FFF9F2] ${hideBottomNav ? '' : 'pb-14'}`}>
       {/* HEADER - cố định trên cùng */}
       <Header newMessageNotif={newMessageNotif} onCloseMessageNotif={() => setNewMessageNotif(null)} />
 
@@ -248,10 +248,9 @@ export default function MainLayout({
       )}
 
       {/* MAIN CONTENT - đẩy xuống dưới header, sang phải sidebar */}
-      <div className={`h-screen overflow-hidden flex flex-col transition-all duration-300 ${newMessageNotif ? 'pt-[calc(3rem+64px)] md:pt-20' : 'pt-16 md:pt-20'} sm:pl-16 lg:pl-20`}>
-        {/* MAIN CONTENT - chỉ phần này cuộn */}
-        <main className="flex-1 min-h-0 bg-white relative px-0 overflow-auto">
-            {children}
+      <div className={`min-h-screen bg-white transition-all duration-300 ${newMessageNotif ? 'pt-[calc(3rem+64px)] md:pt-20' : 'pt-16 md:pt-20'} sm:pl-16 lg:pl-20`}>
+        <main className="h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] overflow-auto">
+          {children}
         </main>
       </div>
     </div>

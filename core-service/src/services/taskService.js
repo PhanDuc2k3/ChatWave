@@ -104,9 +104,12 @@ async function getByAssignee(userId) {
   return taskRepository.findByAssignee(userId);
 }
 
-async function getAll(userId) {
+async function getAll(userId, context = null, sourceId = null) {
   if (!userId) return [];
-  return taskRepository.findAll({ userId });
+  const query = { userId };
+  if (context) query.context = context;
+  if (sourceId) query.sourceId = sourceId;
+  return taskRepository.findAll(query);
 }
 
 async function getStatusChangeRecipient(task, actorId, newStatus) {

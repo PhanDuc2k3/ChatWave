@@ -3,12 +3,50 @@ const chatGroupService = require("../services/chatGroupService");
 const userService = require("../services/userService");
 const { executeActions, ACTION_TYPES } = require("../services/aiActionService");
 
+// Hàm parse date dd/mm/yyyy hoặc ISO (yyyy-mm-dd)
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  // Nếu là ISO format (yyyy-mm-dd)
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    return new Date(dateStr + "T00:00:00Z");
+  }
+  // Parse dd/mm/yyyy
+  const parts = dateStr.split("/");
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    // Tạo UTC date để tránh timezone issues
+    return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+  }
+  return null;
+}
+
+function isOverdue(dueDateStr) {
+  if (!dueDateStr) return false;
+  const dueDate = parseDate(dueDateStr);
+  if (!dueDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return dueDate < today;
+}
+
+function compareDate(dateStr, compareTo) {
+  const date = parseDate(dateStr);
+  const compare = parseDate(compareTo);
+  if (!date || !compare) return false;
+  date.setHours(0, 0, 0, 0);
+  compare.setHours(0, 0, 0, 0);
+  return date < compare;
+}
+
 async function analyze(req, res, next) {
   try {
-    const { teamId, userCommand } = req.body || {};
+    const { teamId, userCommand, analyzeForId, analyzeForType } = req.body || {};
     const actorId = req.user?.id;
 
     console.log(`[AI Analyze] Starting for teamId: ${teamId}, actorId: ${actorId}, command: ${userCommand}`);
+    console.log(`[AI Analyze] Filter by: analyzeForId=${analyzeForId}, analyzeForType=${analyzeForType}`);
 
     if (!actorId) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -27,16 +65,34 @@ async function analyze(req, res, next) {
       isLeader: false,
       groupSize: 0,
       groupName: null,
+      scope: "personal", // Thêm scope để frontend biết
     };
 
     try {
       // Fetch user's groups and tasks
-      const [tasks, groups] = await Promise.all([
+      let [tasks, groups] = await Promise.all([
         taskService.getAll(actorId),
         chatGroupService.getMyGroups(actorId),
       ]);
 
       console.log(`[AI Analyze] Found ${tasks?.length || 0} tasks, ${groups?.length || 0} groups`);
+
+      // Filter: chỉ lấy tasks gần đây (60 ngày) hoặc tasks đang active (pending/in_progress)
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      const sixtyDaysAgoStr = sixtyDaysAgo.toISOString().split("T")[0];
+
+      const filteredTasks = tasks.filter(t => {
+        // Luôn giữ tasks đang active
+        if (t.status === "pending" || t.status === "in_progress") return true;
+        // Giữ tasks done/cancelled gần đây (60 ngày)
+        const updatedAt = t.updatedAt || t.createdAt;
+        if (updatedAt && compareDate(updatedAt, sixtyDaysAgoStr)) return true;
+        return false;
+      });
+
+      tasks = filteredTasks;
+      console.log(`[AI Analyze] Filtered to ${tasks.length} recent/active tasks`);
 
       // Determine if analyzing a specific team or personal
       if (teamId) {
@@ -61,35 +117,38 @@ async function analyze(req, res, next) {
 
         console.log(`[AI Analyze] Group: ${group.name}, members: ${memberCount}, userRole: ${userMember?.role}, isLeader: ${isLeader}`);
 
-        // Permission logic:
-        // - If group size > 2: only leader can analyze full team
-        // - If group size <= 2: both members can analyze each other
-        if (memberCount > 2 && !isLeader) {
-          return res.status(403).json({
-            message: "Chỉ Leader (Owner/Admin) mới được phân tích team khi nhóm có >2 người",
-            code: "PERMISSION_DENIED"
-          });
-        }
-
-        // Get all members in the group
+        // =============================================
+        // NHÓM CHAT - Leader và Member có quyền khác nhau
+        // =============================================
+        
+        // Get all member IDs in the group
         const memberIds = new Set();
         group.members?.forEach(m => memberIds.add(m.userId));
 
-        // Fetch all tasks for group members
-        const allTasks = [];
-        for (const memberId of memberIds) {
-          const memberTasks = await taskService.getAll(memberId).catch(() => []);
-          allTasks.push(...memberTasks);
+        let filteredTasks = tasks;
+        
+        if (isLeader) {
+          // Leader: xem TẤT CẢ task trong nhóm
+          filteredTasks = tasks.filter(t => 
+            t.source === "group" && 
+            (t.sourceId === group.id || t.sourceId === group._id)
+          );
+          teamStats.scope = "group_leader";
+        } else {
+          // Member: chỉ xem task được giao CHO MÌNH trong nhóm
+          filteredTasks = tasks.filter(t => 
+            t.source === "group" && 
+            (t.sourceId === group.id || t.sourceId === group._id) &&
+            t.assigneeId === actorId
+          );
+          teamStats.scope = "group_member";
         }
-        // Remove duplicates by task ID
-        const uniqueTasks = Array.from(
-          new Map(allTasks.map(t => [t.id || t._id, t])).values()
-        );
-        taskData = uniqueTasks.filter(t => t.status !== "done" && t.status !== "cancelled");
+        
+        taskData = filteredTasks.filter(t => t.status !== "done" && t.status !== "cancelled");
 
         // Build team data with all members
-        const memberPromises = Array.from(memberIds).map(id =>
-          userService.getUserById(id).catch(() => null)
+        const memberPromises = group.members.map(m =>
+          userService.getUserById(m.userId).catch(() => null)
         );
         const members = (await Promise.all(memberPromises)).filter(Boolean);
 
@@ -110,13 +169,14 @@ async function analyze(req, res, next) {
         });
 
         // Count tasks per member
-        const today = new Date().toISOString().split("T")[0];
+        const todayStr = new Date().toISOString().split("T")[0];
+        
         taskData.forEach(t => {
           if (t.assigneeId && memberMap[t.assigneeId]) {
             memberMap[t.assigneeId].taskCount++;
             memberMap[t.assigneeId].pendingCount += t.status === "pending" ? 1 : 0;
             memberMap[t.assigneeId].inProgressCount += t.status === "in_progress" ? 1 : 0;
-            if (t.dueDate && t.dueDate < today) {
+            if (isOverdue(t.dueDate)) {
               memberMap[t.assigneeId].overdueCount++;
             }
             memberMap[t.assigneeId].tasks.push({
@@ -125,7 +185,8 @@ async function analyze(req, res, next) {
               status: t.status,
               priority: t.priority,
               dueDate: t.dueDate,
-              isOverdue: t.dueDate && t.dueDate < today,
+              dueDateISO: parseDate(t.dueDate)?.toISOString()?.split("T")[0] || null,
+              isOverdue: isOverdue(t.dueDate),
             });
           }
         });
@@ -135,22 +196,137 @@ async function analyze(req, res, next) {
           name: group.name,
           members: Object.values(memberMap),
         };
-
         teamStats.members = Object.values(memberMap);
+        teamStats.scope = "group_leader";
 
       } else {
-        // Personal analysis - only user's own tasks
-        taskData = tasks.filter(t => t.status !== "done" && t.status !== "cancelled");
-        teamStats.members = [{
-          id: actorId,
-          name: "You",
-          role: "leader", // Personal mode: user is the leader of their own tasks
-          taskCount: taskData.length,
-          pendingCount: taskData.filter(t => t.status === "pending").length,
-          inProgressCount: taskData.filter(t => t.status === "in_progress").length,
-          overdueCount: taskData.filter(t => t.dueDate && t.dueDate < new Date().toISOString().split("T")[0]).length,
-        }];
-        teamData.members = teamStats.members;
+        // =============================================
+        // PERSONAL CONTEXT (1-1) - Cả 2 người đều được xem
+        // =============================================
+
+        // Get 1-1 conversations (friends)
+        const friendGroups = groups?.filter(g => g.type === "friend" || !g.type) || [];
+
+        // For personal analysis, get all tasks where user is either assigner OR assignee
+        // (Task mình giao + Task người khác giao cho mình)
+        let allPersonalTasks = tasks;
+        
+        // =============================================
+        // LỌC THEO NGƯỜI ĐƯỢC CHỌN
+        // =============================================
+        if (analyzeForId && analyzeForType) {
+          console.log(`[AI Analyze] Filtering for ${analyzeForType}: ${analyzeForId}`);
+          
+          if (analyzeForType === "group") {
+            // Lọc task theo nhóm chat
+            allPersonalTasks = allPersonalTasks.filter(t => 
+              t.source === "group" && t.sourceId === analyzeForId
+            );
+          } else {
+            // Lọc task theo người nhận (task bạn đã giao cho người này)
+            allPersonalTasks = allPersonalTasks.filter(t => 
+              t.assigneeId === analyzeForId
+            );
+          }
+          
+          console.log(`[AI Analyze] Filtered to ${allPersonalTasks.length} tasks`);
+        }
+        
+        taskData = allPersonalTasks.filter(t =>
+          t.status !== "done" &&
+          t.status !== "cancelled" &&
+          t.source !== "group"
+        );
+
+        // Build member map with the other person(s) involved
+        const involvedUsers = new Map();
+
+        taskData.forEach(t => {
+          // Thêm người nhận task (nếu có)
+          if (t.assigneeId && String(t.assigneeId) !== String(actorId)) {
+            if (!involvedUsers.has(t.assigneeId)) {
+              involvedUsers.set(t.assigneeId, {
+                id: t.assigneeId,
+                name: t.assigneeName || "Unknown",
+                role: "member",
+                taskCount: 0,
+                pendingCount: 0,
+                inProgressCount: 0,
+                overdueCount: 0,
+                tasks: [],
+                tasks_i_assigned: [],
+                tasks_assigned_to_me: [],
+              });
+            }
+            const member = involvedUsers.get(t.assigneeId);
+            member.taskCount++;
+            member.pendingCount += t.status === "pending" ? 1 : 0;
+            member.inProgressCount += t.status === "in_progress" ? 1 : 0;
+            if (isOverdue(t.dueDate)) {
+              member.overdueCount++;
+            }
+            member.tasks.push({
+              id: t.id,
+              title: t.title,
+              status: t.status,
+              priority: t.priority,
+              dueDate: t.dueDate,
+              dueDateISO: parseDate(t.dueDate)?.toISOString()?.split("T")[0] || null,
+              isOverdue: isOverdue(t.dueDate),
+            });
+            // Task người khác giao cho tôi
+            if (String(t.assignerId) !== String(actorId)) {
+              member.tasks_assigned_to_me.push(t.id);
+            }
+          }
+
+          // Thêm người giao task (nếu có, và khác với actor)
+          if (t.assignerId && String(t.assignerId) !== String(actorId)) {
+            if (!involvedUsers.has(t.assignerId)) {
+              involvedUsers.set(t.assignerId, {
+                id: t.assignerId,
+                name: t.assignerName || "Unknown",
+                role: "member",
+                taskCount: 0,
+                pendingCount: 0,
+                inProgressCount: 0,
+                overdueCount: 0,
+                tasks: [],
+                tasks_i_assigned: [],
+                tasks_assigned_to_me: [],
+              });
+            }
+            const member = involvedUsers.get(t.assignerId);
+            // Task mình giao cho người khác
+            if (String(t.assigneeId) === String(actorId) || !t.assigneeId) {
+              member.tasks_i_assigned = member.tasks_i_assigned || [];
+              member.tasks_i_assigned.push(t.id);
+            }
+          }
+        });
+
+        // Current user as leader of their own tasks
+        const myTasks = taskData.filter(t =>
+          String(t.assignerId) === String(actorId) ||
+          String(t.assigneeId) === String(actorId)
+        );
+
+        teamData = {
+          id: "personal",
+          name: "Cá nhân",
+          members: [{
+            id: actorId,
+            name: "Tôi",
+            role: "leader",
+            taskCount: myTasks.length,
+            pendingCount: myTasks.filter(t => t.status === "pending").length,
+            inProgressCount: myTasks.filter(t => t.status === "in_progress").length,
+            overdueCount: myTasks.filter(t => isOverdue(t.dueDate)).length,
+          }, ...Object.values(involvedUsers)],
+        };
+
+        teamStats.members = teamData.members;
+        teamStats.scope = "personal";
       }
 
       // Calculate overall stats (already calculated per-member, now aggregate)
@@ -160,8 +336,7 @@ async function analyze(req, res, next) {
       teamStats.doneTasks = taskData.filter(t => t.status === "done").length;
       teamStats.highPriorityTasks = taskData.filter(t => t.priority === "high" && t.status !== "done").length;
 
-      const today = new Date().toISOString().split("T")[0];
-      teamStats.overdueTasks = taskData.filter(t => t.dueDate && t.dueDate < today && t.status !== "done" && t.status !== "cancelled").length;
+      teamStats.overdueTasks = taskData.filter(t => isOverdue(t.dueDate) && t.status !== "done" && t.status !== "cancelled").length;
 
     } catch (err) {
       console.error("Failed to gather team data:", err.message);
@@ -186,9 +361,13 @@ Bạn có khả năng PHÂN TÍCH SÂU và ĐỀ XUẤT HÀNH ĐỘNG CỤ THỂ
 QUYỀN HẠN PHÂN TÍCH
 =====================
 
-- Nhóm > 2 người: CHỈ Leader được phân tích TOÀN BỘ team
-- Nhóm 2 người: CẢ 2 người đều được phân tích
-- Personal mode: Chỉ phân tích task cá nhân
+**1-1 CHAT (Bạn bè):**
+- Cả 2 người đều xem được: task mình giao cho người kia + task người kia giao cho mình
+- KHÔNG xem được: task người khác giao cho nhau (ngoài 2 người)
+
+**NHÓM CHAT:**
+- Leader: xem TẤT CẢ task trong nhóm
+- Member: CHỈ xem task được giao CHO MÌNH trong nhóm
 
 =====================
 NHIỆN VỤ CHÍNH
@@ -212,7 +391,20 @@ QUY TẮC BẮT BUỘC
 - KHÔNG được trả text ngoài JSON
 - KHÔNG giải thích ngoài field "reason"
 - Cố gắng PHÁT HIỆN các vấn đề ẩn trong dữ liệu
-- Nếu user không phải leader và nhóm >2: KHÔNG đề xuất thay đổi task của người khác (chỉ có thể thông báo/alert)
+
+**QUY TẮC ĐẶC BIỆT:**
+
+**QUY TẮC DATE FORMAT (RẤT QUAN TRỌNG):**
+- Dữ liệu có 2 trường date: dueDate (dd/mm/yyyy) và dueDateISO (yyyy-mm-dd)
+- KHI NÀO SO SÁNH HOẶC TÍNH OVERDUE: LUÔN dùng dueDateISO
+- dueDate chỉ dùng để HIỂN THỊ thông tin cho user
+- Nếu task có dueDateISO là null hoặc future date → KHÔNG báo quá hạn
+- Chỉ báo "quá hạn" khi isOverdue: true trong data
+
+- CHỉ đề xuất action trên task mà user có liên quan (giao hoặc được giao)
+- KHÔNG đề xuất thay đổi task giữa 2 người khác mà user không liên quan
+- Có thể ALERT_STUCK_USER nếu người đó có task với user
+- Có thể NOTIFY_MEMBER để nhắc nhở
 
 =====================
 LOGIC PHÂN TÍCH SÂU
@@ -225,7 +417,6 @@ LOGIC PHÂN TÍCH SÂU
 - Có thể gửi thông báo cho user đó
 
 **CÂN BẰNG TẢI (AUTO_ASSIGN_BALANCE):**
-- Chỉ áp dụng nếu user là LEADER
 - Tính số task mỗi người trong team
 - Ai có > 5 tasks pending → cân bằng sang ai có < 2 tasks
 - Ưu tiên chuyển task low priority trước
