@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Home as HomeIcon,
@@ -34,6 +34,10 @@ export default function MainLayout({
   const isGuest = !currentUser;
   const currentUserId = currentUser?.id || currentUser?._id || null;
 
+  // State cho notification banner tin nhắn mới (mobile)
+  const [newMessageNotif, setNewMessageNotif] = useState(null);
+  const newMessageTimeoutRef = useRef(null);
+
   // Thông báo tin nhắn mới khi ở bất kỳ trang nào (Home, Profile, ...)
   useEffect(() => {
     if (isGuest || !currentUserId) return;
@@ -64,21 +68,40 @@ export default function MainLayout({
       const preview = msg.imageUrl ? "[Ảnh]" : (msg.text || "").slice(0, 80);
       const sender = msg.senderName || "Ai đó";
       const content = `${sender}: ${preview || "Tin nhắn mới"}`;
-      toast(
-        <div className="min-w-[360px] max-w-[420px]">
-          <p className="text-sm font-semibold text-gray-800 mb-1">
-            Thông báo tin nhắn mới
-          </p>
-          <p className="text-sm text-gray-600 truncate" title={content}>
-            {content}
-          </p>
-        </div>,
-        {
-          position: "bottom-right",
-          duration: 4000,
-          icon: false,
+      const isMobile = window.innerWidth < 768;
+
+      if (isMobile) {
+        // Mobile: hiện notification banner ở header
+        if (newMessageTimeoutRef.current) {
+          clearTimeout(newMessageTimeoutRef.current);
         }
-      );
+        setNewMessageNotif({
+          id: Date.now(),
+          sender,
+          preview: preview || "Tin nhắn mới",
+          conversationId: msg.conversationId,
+        });
+        newMessageTimeoutRef.current = setTimeout(() => {
+          setNewMessageNotif(null);
+        }, 4000);
+      } else {
+        // Desktop: hiện toast
+        toast(
+          <div className="min-w-[360px] max-w-[420px]">
+            <p className="text-sm font-semibold text-gray-800 mb-1">
+              Thông báo tin nhắn mới
+            </p>
+            <p className="text-sm text-gray-600 truncate" title={content}>
+              {content}
+            </p>
+          </div>,
+          {
+            position: "bottom-right",
+            duration: 4000,
+            icon: false,
+          }
+        );
+      }
     };
 
     socket.on("new_message", handleNewMessage);
@@ -139,7 +162,7 @@ export default function MainLayout({
   return (
     <div className={`min-h-screen bg-[#FFF9F2] ${hideBottomNav ? '' : 'pb-14'}`}>
       {/* HEADER - cố định trên cùng */}
-      <Header />
+      <Header newMessageNotif={newMessageNotif} onCloseMessageNotif={() => setNewMessageNotif(null)} />
 
       {/* SIDEBAR - cố định bên trái, dưới header (desktop / tablet) */}
       <Sidebar activeNav={activeNav} setActiveNav={handleSetActiveNav} />
@@ -225,7 +248,7 @@ export default function MainLayout({
       )}
 
       {/* MAIN CONTENT - đẩy xuống dưới header, sang phải sidebar */}
-      <div className="pt-16 md:pt-20 sm:pl-16 lg:pl-20 h-screen overflow-hidden flex flex-col">
+      <div className={`h-screen overflow-hidden flex flex-col transition-all duration-300 ${newMessageNotif ? 'pt-[calc(3rem+64px)] md:pt-20' : 'pt-16 md:pt-20'} sm:pl-16 lg:pl-20`}>
         {/* MAIN CONTENT - chỉ phần này cuộn */}
         <main className="flex-1 min-h-0 bg-white relative px-0 overflow-auto">
             {children}

@@ -1,17 +1,19 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { User, LogOut, Search, Bell, Users, CheckSquare, UserPlus } from "lucide-react";
+import { User, LogOut, Search, Bell, Users, CheckSquare, UserPlus, X, MessageCircle } from "lucide-react";
 import { authApi } from "../api/authApi";
 import toast from "react-hot-toast";
 import { notificationApi } from "../api/notificationApi";
 import { getApiMessage } from "../utils/api";
 import logo from "../assets/logo-web.png";
 
-export default function Header() {
+export default function Header({ newMessageNotif, onCloseMessageNotif }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -19,8 +21,6 @@ export default function Header() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [notifications, setNotifications] = useState({ items: [], total: 0 });
-  const [notifOpen, setNotifOpen] = useState(false);
-  const notifRef = useRef(null);
 
   useEffect(() => {
     try {
@@ -101,180 +101,212 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 w-full h-16 md:h-20 bg-[#F9C96D] flex items-center justify-between px-3 md:px-4">
-      <div className="flex items-center gap-2 md:gap-3 flex-1">
-        <img
-          src={logo}
-          alt="ChatWave logo"
-          className="w-12 h-12 md:w-16 md:h-16 object-contain"
-        />
-        {/* Search desktop/tablet */}
-        <form
-          onSubmit={handleSearchSubmit}
-          className="hidden sm:flex items-center bg-white/90 rounded-full px-3 py-1.5 max-w-md w-full shadow-sm border border-white/50"
-        >
-          <Search className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm nhóm, bài viết, người dùng..."
-            className="flex-1 bg-transparent outline-none text-xs md:text-sm text-gray-700"
-          />
-        </form>
-      </div>
+    <header className="fixed top-0 left-0 right-0 z-40 w-full">
+      {/* Notification banner tin nhắn mới (mobile) */}
+      {newMessageNotif && (
+        <div className="md:hidden bg-linear-to-r from-[#FA8DAE] to-[#F9C96D] px-4 py-3 flex items-center gap-3 shadow-md animate-slide-down">
+          <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center shrink-0">
+            <MessageCircle className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
+            if (onCloseMessageNotif) onCloseMessageNotif();
+            navigate("/message");
+          }}>
+            <p className="text-sm font-semibold text-white truncate">
+              {newMessageNotif.sender}
+            </p>
+            <p className="text-xs text-white/90 truncate">
+              {newMessageNotif.preview}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onCloseMessageNotif) onCloseMessageNotif();
+            }}
+            className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition shrink-0"
+          >
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </div>
+      )}
 
-      <div className="flex items-center justify-end gap-1.5 md:gap-3 text-sm md:text-base">
-        {currentUser && (
-          <div className="relative" ref={notifRef}>
+      {/* Header chính */}
+      <div className="h-16 md:h-20 bg-[#F9C96D] flex items-center justify-between px-3 md:px-4">
+        {/* Logo + Search */}
+        <div className="flex items-center gap-2 md:gap-3 flex-1">
+          <img
+            src={logo}
+            alt="ChatWave logo"
+            className="w-12 h-12 md:w-16 md:h-16 object-contain"
+          />
+          {/* Search desktop/tablet */}
+          <form
+            onSubmit={handleSearchSubmit}
+            className="hidden sm:flex items-center bg-white/90 rounded-full px-3 py-1.5 max-w-md w-full shadow-sm border border-white/50"
+          >
+            <Search className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm nhóm, bài viết, người dùng..."
+              className="flex-1 bg-transparent outline-none text-xs md:text-sm text-gray-700"
+            />
+          </form>
+        </div>
+
+        {/* Actions: Notifications, Search, Profile */}
+        <div className="flex items-center justify-end gap-1 md:gap-3 text-sm md:text-base">
+          {/* Notifications */}
+          {currentUser && (
+            <div ref={notifRef} className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.innerWidth < 768) {
+                    navigate("/notifications");
+                  } else {
+                    setNotifOpen((v) => !v);
+                  }
+                }}
+                className="relative p-1.5 md:p-2 rounded-full hover:bg-white/50 transition"
+                title="Thông báo"
+              >
+                <Bell className="w-5 h-5 md:w-6 md:h-6 text-gray-700" />
+                {notifications.total > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 md:min-w-[18px] md:h-[18px] flex items-center justify-center text-[9px] md:text-[10px] font-bold bg-[#FA8DAE] text-white rounded-full px-0.5">
+                    {notifications.total > 9 ? "9+" : notifications.total}
+                  </span>
+                )}
+              </button>
+              {/* Desktop: Dropdown notifications */}
+              {notifOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 max-h-[360px] bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden flex flex-col">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <span className="font-semibold text-gray-800">Thông báo</span>
+                    {(notifications.items?.length || 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await notificationApi.markAllAsRead();
+                            setNotifications((prev) => ({
+                              ...prev,
+                              items: (prev.items || []).map((it) => ({ ...it, read: true })),
+                              total: 0,
+                            }));
+                          } catch { /* ignore */ }
+                        }}
+                        className="text-xs text-[#FA8DAE] hover:underline"
+                      >
+                        Đánh dấu đã đọc
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    {!notifications.items?.length ? (
+                      <p className="p-4 text-center text-gray-500 text-sm">Chưa có thông báo</p>
+                    ) : (
+                      notifications.items.map((item) => {
+                        const Icon = item.type === "friend_request" ? UserPlus : item.type === "task_assigned" || item.type === "task_status_changed" ? CheckSquare : item.type === "group_join_approved" ? Users : Bell;
+                        const link = item.link || (item.meta?.groupId ? `/groups/${item.meta.groupId}` : "/");
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              setNotifOpen(false);
+                              navigate(link);
+                            }}
+                            className={`w-full flex gap-3 px-4 py-3 text-left hover:bg-gray-50 transition border-b border-gray-50 last:border-0 ${!item.read ? "bg-[#FFF7F0]/50" : ""}`}
+                          >
+                            <div className="w-9 h-9 rounded-full bg-[#FA8DAE]/20 flex items-center justify-center shrink-0">
+                              <Icon className="w-4 h-4 text-[#FA8DAE]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-800 truncate">{item.title}</p>
+                              <p className="text-xs text-gray-500 truncate">{item.message}</p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Search icon mobile */}
+          <button
+            type="button"
+            onClick={() => {
+              if (searchQuery.trim()) {
+                handleSearchSubmit();
+              } else {
+                navigate("/search");
+              }
+            }}
+            className="flex sm:hidden items-center justify-center w-9 h-9 rounded-full hover:bg-white/60 text-gray-700"
+            title="Tìm kiếm"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+
+          {/* User dropdown */}
+          <div ref={dropdownRef} className="relative">
             <button
               type="button"
-              onClick={() => setNotifOpen((v) => !v)}
-              className="relative p-2 rounded-full hover:bg-white/50 transition"
-              title="Thông báo"
+              onClick={() => setDropdownOpen((v) => !v)}
+              className="flex items-center gap-1.5 hover:opacity-90 transition rounded-lg py-1 pr-1"
             >
-              <Bell className="w-5 h-5 text-gray-700" />
-              {notifications.total > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-[#FA8DAE] text-white rounded-full">
-                  {notifications.total > 9 ? "9+" : notifications.total}
-                </span>
-              )}
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-[#FA8DAE] flex items-center justify-center text-white font-semibold shrink-0">
+                {currentUser?.avatar ? (
+                  <img src={currentUser.avatar} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  initial
+                )}
+              </div>
+              <span className="hidden sm:inline font-medium text-gray-800 text-sm md:text-base max-w-[140px] truncate">
+                {displayName}
+              </span>
             </button>
-            {notifOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 max-h-[360px] bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden flex flex-col">
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
-                  <span className="font-semibold text-gray-800">Thông báo</span>
-                  {(notifications.items?.length || 0) > 0 && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await notificationApi.markAllAsRead();
-                          setNotifications((prev) => ({
-                            ...prev,
-                            items: (prev.items || []).map((it) => ({
-                              ...it,
-                              read: true,
-                            })),
-                            total: 0,
-                          }));
-                        } catch { /* ignore */ }
-                      }}
-                      className="text-xs text-[#FA8DAE] hover:underline"
-                    >
-                      Đánh dấu đã đọc
-                    </button>
-                  )}
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  {!notifications.items?.length ? (
-                    <p className="p-4 text-center text-gray-500 text-sm">Chưa có thông báo</p>
-                  ) : (
-                    notifications.items.map((item) => {
-                      const Icon =
-                        item.type === "friend_request"
-                          ? UserPlus
-                          : item.type === "task_assigned" || item.type === "task_status_changed"
-                          ? CheckSquare
-                          : item.type === "group_join_approved"
-                          ? Users
-                          : Bell;
-                      const link = item.link || (item.meta?.groupId ? `/groups/${item.meta.groupId}` : "/");
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => {
-                            setNotifOpen(false);
-                            navigate(link);
-                            if (item.type === "group_join_approved" && item.id) {
-                              notificationApi.markAsRead(item.id).catch(() => {});
-                              fetchNotifications();
-                            }
-                          }}
-                          className={`w-full flex gap-3 px-4 py-3 text-left hover:bg-gray-50 transition border-b border-gray-50 last:border-0 ${!item.read ? "bg-[#FFF7F0]/50" : ""}`}
-                        >
-                          <div className="w-9 h-9 rounded-full bg-[#FA8DAE]/20 flex items-center justify-center shrink-0">
-                            <Icon className="w-4 h-4 text-[#FA8DAE]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 truncate">{item.title}</p>
-                            <p className="text-xs text-gray-500 truncate">{item.message}</p>
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
+
+            {dropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 py-1 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                <button
+                  type="button"
+                  onClick={handleProfile}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition first:rounded-t-xl"
+                >
+                  <User className="w-4 h-4 text-[#FA8DAE]" />
+                  Trang cá nhân
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenChangePassword}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition"
+                >
+                  <span className="w-2 h-2 rounded-full bg-[#FA8DAE]" />
+                  Đổi mật khẩu
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition last:rounded-b-xl"
+                >
+                  <LogOut className="w-4 h-4 text-gray-500" />
+                  Đăng xuất
+                </button>
               </div>
             )}
           </div>
-        )}
-        {/* Icon search cho mobile */}
-        <button
-          type="button"
-          onClick={() => {
-            if (searchQuery.trim()) {
-              handleSearchSubmit();
-            } else {
-              navigate("/search");
-            }
-          }}
-          className="flex sm:hidden items-center justify-center w-9 h-9 rounded-full hover:bg-white/60 text-gray-700"
-          title="Tìm kiếm"
-        >
-          <Search className="w-5 h-5" />
-        </button>
-
-        <div ref={dropdownRef} className="relative">
-          <button
-            type="button"
-            onClick={() => setDropdownOpen((v) => !v)}
-            className="flex items-center gap-1.5 hover:opacity-90 transition rounded-lg py-1 pr-1"
-          >
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-[#FA8DAE] flex items-center justify-center text-white font-semibold shrink-0">
-              {currentUser?.avatar ? (
-                <img src={currentUser.avatar} alt="" className="w-full h-full object-cover" />
-              ) : (
-                initial
-              )}
-            </div>
-            <span className="hidden sm:inline font-medium text-gray-800 text-sm md:text-base max-w-[140px] truncate">
-              {displayName}
-            </span>
-          </button>
-
-          {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 py-1 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
-              <button
-                type="button"
-                onClick={handleProfile}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition first:rounded-t-xl"
-              >
-                <User className="w-4 h-4 text-[#FA8DAE]" />
-                Trang cá nhân
-              </button>
-              <button
-                type="button"
-                onClick={handleOpenChangePassword}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition"
-              >
-                <span className="w-2 h-2 rounded-full bg-[#FA8DAE]" />
-                Đổi mật khẩu
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition last:rounded-b-xl"
-              >
-                <LogOut className="w-4 h-4 text-gray-500" />
-                Đăng xuất
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
+      {/* Change Password Modal */}
       {showChangePassword && currentUser && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4">
@@ -360,4 +392,3 @@ export default function Header() {
     </header>
   );
 }
-
