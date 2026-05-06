@@ -292,7 +292,7 @@ export default function MessagePage() {
   ) : null;
 
   return (
-    <MainLayout headerContent={headerContent}>
+    <MainLayout headerContent={headerContent} hideBottomNav={selectedChat !== null}>
       <div className="w-full h-full">
         {hasConversations ? (
           <>

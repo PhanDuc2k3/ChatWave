@@ -19,6 +19,7 @@ export default function MainLayout({
   children,
   headerContent,
   showSearch = true,
+  hideBottomNav = false,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -136,14 +137,15 @@ export default function MainLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF9F2] pb-14 md:pb-0">
+    <div className={`min-h-screen bg-[#FFF9F2] ${hideBottomNav ? '' : 'pb-14'}`}>
       {/* HEADER - cố định trên cùng */}
       <Header />
 
       {/* SIDEBAR - cố định bên trái, dưới header (desktop / tablet) */}
       <Sidebar activeNav={activeNav} setActiveNav={handleSetActiveNav} />
 
-      {/* BOTTOM NAV - cho mobile (ẩn trên md) */}
+      {/* BOTTOM NAV - cho mobile (ẩn trên md) - ẩn khi hideBottomNav=true */}
+      {!hideBottomNav && (
       <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 border-t border-gray-200 backdrop-blur">
         <div className="max-w-4xl mx-auto px-4 py-1.5 flex items-center justify-between gap-1 text-xs">
           <button
@@ -220,6 +222,7 @@ export default function MainLayout({
           </button>
         </div>
       </nav>
+      )}
 
       {/* MAIN CONTENT - đẩy xuống dưới header, sang phải sidebar */}
       <div className="pt-16 md:pt-20 sm:pl-16 lg:pl-20 h-screen overflow-hidden flex flex-col">

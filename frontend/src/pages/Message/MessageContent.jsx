@@ -579,22 +579,61 @@ export default function MessageContent({
   };
 
   return (
-    <div className="flex h-full min-h-[400px] bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="flex h-full min-h-[400px] bg-white md:rounded-2xl md:border md:border-gray-200 md:overflow-hidden">
       {/* Khu vực chat bên trái */}
       {selected ? (
-        <div className="flex-1 flex flex-col">
-          {/* Header cuộc trò chuyện */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-[#FFF7F0]">
-            {showBackButton && onBack && (
-              <button
-                type="button"
-                onClick={onBack}
-                className="md:hidden mr-1 w-9 h-9 rounded-full flex items-center justify-center text-gray-700 hover:bg-white/70 transition"
-                title="Quay lại danh sách"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
+        <div className="flex-1 flex flex-col min-h-0 w-full">
+          {/* Header mobile - theo thiết kế mới */}
+          <div className="md:hidden sticky top-0 z-20 bg-white border-b border-gray-100 shrink-0 shadow-sm">
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              {showBackButton && onBack && (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition -ml-1"
+                  title="Quay lại danh sách"
+                >
+                  <ArrowLeft className="w-5 h-5 text-gray-700" />
+                </button>
+              )}
+              <div className="w-11 h-11 rounded-full bg-linear-to-br from-[#FED7AA] to-[#FBCFE8] flex items-center justify-center text-sm font-semibold text-[#C2410C] overflow-hidden shrink-0">
+                {selected.avatar ? (
+                  <img src={selected.avatar} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  (selected.name?.charAt(0) || "U").toUpperCase()
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 truncate text-sm">
+                  {selected.name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {selected.status === "Online" ? "Đang hoạt động" : "Offline"}
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShowVideoCall(true)}
+                  title="Gọi video"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#EA580C] hover:bg-orange-50 transition"
+                >
+                  <Video className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowInfo((prev) => !prev)}
+                  title="Thông tin"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#EA580C] hover:bg-orange-50 transition"
+                >
+                  <Info className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Header desktop */}
+          <div className="hidden md:flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-[#FFF7F0] shrink-0">
             <div className="w-10 h-10 rounded-full bg-[#FED7AA] flex items-center justify-center text-sm font-semibold text-[#C2410C] overflow-hidden shrink-0">
               {selected.avatar ? (
                 <img src={selected.avatar} alt="" className="w-full h-full object-cover" />
@@ -654,8 +693,8 @@ export default function MessageContent({
             </div>
           </div>
 
-          {/* Vùng tin nhắn */}
-          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+          {/* Vùng tin nhắn - mobile responsive */}
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-0 md:p-4 md:space-y-3">
             {loading && (
               <p className="text-xs text-gray-400 text-center">
                 Đang tải tin nhắn...
@@ -691,7 +730,7 @@ export default function MessageContent({
                     className={`flex ${isMe ? "justify-end" : "justify-start"} group`}
                   >
                     <div
-                      className={`max-w-[80%] md:max-w-[65%] lg:max-w-[55%] rounded-2xl px-4 py-2 relative ${
+                      className={`max-w-[85%] sm:max-w-[80%] md:max-w-[65%] lg:max-w-[55%] rounded-2xl px-3 py-2 md:px-4 md:py-2 relative ${
                         isMe
                           ? "bg-[#F9C96D] text-gray-800"
                           : "bg-gray-100 text-gray-800"
@@ -776,9 +815,14 @@ export default function MessageContent({
             )}
           </div>
 
-          {/* Ô nhập tin nhắn */}
+          {/* Ô nhập tin nhắn - Sticky, responsive mobile */}
           <form
-            className="p-4 border-t border-gray-100"
+            className="px-3 py-2.5 md:p-4 border-t border-gray-100 bg-white shrink-0 pb-safe"
+            style={{ 
+              position: 'sticky', 
+              bottom: 0,
+              paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))'
+            }}
             onSubmit={(e) => {
               e.preventDefault();
               handleSend();
@@ -830,7 +874,7 @@ export default function MessageContent({
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2">
+            <div className="flex items-center gap-1.5 md:gap-2 rounded-full bg-gray-100 px-3 py-2 md:px-4 md:py-2">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
