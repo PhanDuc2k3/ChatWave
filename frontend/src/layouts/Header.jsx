@@ -12,6 +12,7 @@ export default function Header({ newMessageNotif, onCloseMessageNotif }) {
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const logoDropdownRef = useRef(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -34,6 +35,9 @@ export default function Header({ newMessageNotif, onCloseMessageNotif }) {
 
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+      if (logoDropdownRef.current && !logoDropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
       }
       if (notifRef.current && !notifRef.current.contains(e.target)) {
@@ -134,13 +138,20 @@ export default function Header({ newMessageNotif, onCloseMessageNotif }) {
 
       {/* Header chính */}
       <div className="h-16 md:h-20 bg-[#F9C96D] flex items-center justify-between px-3 md:px-4">
-        {/* Logo + Search */}
+        {/* Logo Avatar + Search */}
         <div className="flex items-center gap-2 md:gap-3 flex-1">
-          <img
-            src={logo}
-            alt="ChatWave logo"
-            className="w-12 h-12 md:w-16 md:h-16 object-contain"
-          />
+          {/* Logo - về trang chủ */}
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden bg-white shadow-md hover:opacity-90 transition flex items-center justify-center"
+          >
+            <img
+              src={logo}
+              alt="ChatWave logo"
+              className="w-full h-full object-contain"
+            />
+          </button>
           {/* Search desktop/tablet */}
           <form
             onSubmit={handleSearchSubmit}
@@ -159,7 +170,7 @@ export default function Header({ newMessageNotif, onCloseMessageNotif }) {
 
         {/* Actions: Notifications, Search, Profile */}
         <div className="flex items-center justify-end gap-1 md:gap-3 text-sm md:text-base">
-          {/* Notifications */}
+          {/* Notifications - chỉ hiện khi đã đăng nhập */}
           {currentUser && (
             <div ref={notifRef} className="relative">
               <button
@@ -262,44 +273,69 @@ export default function Header({ newMessageNotif, onCloseMessageNotif }) {
               onClick={() => setDropdownOpen((v) => !v)}
               className="flex items-center gap-1.5 hover:opacity-90 transition rounded-lg py-1 pr-1"
             >
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-[#FA8DAE] flex items-center justify-center text-white font-semibold shrink-0">
-                {currentUser?.avatar ? (
-                  <img src={currentUser.avatar} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  initial
-                )}
-              </div>
-              <span className="hidden sm:inline font-medium text-gray-800 text-sm md:text-base max-w-[140px] truncate">
-                {displayName}
-              </span>
+              {currentUser ? (
+                <>
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-[#FA8DAE] flex items-center justify-center text-white font-semibold shrink-0">
+                    {currentUser?.avatar ? (
+                      <img src={currentUser.avatar} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      initial
+                    )}
+                  </div>
+                  <span className="hidden sm:inline font-medium text-gray-800 text-sm md:text-base max-w-[140px] truncate">
+                    {displayName}
+                  </span>
+                </>
+              ) : (
+                <div className="flex items-center gap-1.5 bg-white/80 px-3 py-1.5 rounded-full shadow-sm">
+                  <User className="w-4 h-4 text-gray-600" />
+                  <span className="hidden sm:inline text-sm text-gray-700">Đăng nhập</span>
+                </div>
+              )}
             </button>
 
             {dropdownOpen && (
               <div className="absolute right-0 top-full mt-2 w-48 py-1 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
-                <button
-                  type="button"
-                  onClick={handleProfile}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition first:rounded-t-xl"
-                >
-                  <User className="w-4 h-4 text-[#FA8DAE]" />
-                  Trang cá nhân
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenChangePassword}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition"
-                >
-                  <span className="w-2 h-2 rounded-full bg-[#FA8DAE]" />
-                  Đổi mật khẩu
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition last:rounded-b-xl"
-                >
-                  <LogOut className="w-4 h-4 text-gray-500" />
-                  Đăng xuất
-                </button>
+                {currentUser ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleProfile}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition first:rounded-t-xl"
+                    >
+                      <User className="w-4 h-4 text-[#FA8DAE]" />
+                      Trang cá nhân
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenChangePassword}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-[#FA8DAE]" />
+                      Đổi mật khẩu
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition last:rounded-b-xl"
+                    >
+                      <LogOut className="w-4 h-4 text-gray-500" />
+                      Đăng xuất
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      navigate("/login");
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-[#FFF7F0] transition rounded-xl"
+                  >
+                    <User className="w-4 h-4 text-[#FA8DAE]" />
+                    Đăng nhập
+                  </button>
+                )}
               </div>
             )}
           </div>
